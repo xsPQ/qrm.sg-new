@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Preflight"
+  short_description: "Prüft Task, Scope, Regeln und Budget"
+  default_prompt: "Use $task-preflight to verify this task is ready before making changes."

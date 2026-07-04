@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docker Delivery"
+  short_description: "Validiert sichere Docker- und Compose-Änderungen"
+  default_prompt: "Use $docker-delivery to implement and verify this Docker delivery task."

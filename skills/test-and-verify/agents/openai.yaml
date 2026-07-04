@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test and Verify"
+  short_description: "Plant Tests und belegt die Verifikation"
+  default_prompt: "Use $test-and-verify to test this change and record completion evidence."

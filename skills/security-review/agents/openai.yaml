@@ -1,0 +1,4 @@
+interface:
+  display_name: "Security Review"
+  short_description: "Prüft Code und Konfiguration auf Risiken"
+  default_prompt: "Use $security-review to perform a risk-based security review of this change."

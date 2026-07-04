@@ -1,0 +1,4 @@
+interface:
+  display_name: "Root Cause Debugging"
+  short_description: "Reproduziert Fehler und belegt die Ursache"
+  default_prompt: "Use $root-cause-debugging to reproduce this failure and identify its root cause."

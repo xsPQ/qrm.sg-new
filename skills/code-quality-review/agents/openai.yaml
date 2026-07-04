@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Quality Review"
+  short_description: "Prüft Logik, Scope und Wartbarkeit"
+  default_prompt: "Use $code-quality-review to review this change for correctness and maintainability."

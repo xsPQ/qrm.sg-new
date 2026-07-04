@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Workflow"
+  short_description: "Führt den gewählten Git-Workflow sicher aus"
+  default_prompt: "Use $git-workflow to prepare and complete the Git steps for this task."

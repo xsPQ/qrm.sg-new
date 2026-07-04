@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Readiness"
+  short_description: "Prüft Release, Rollback und Healthcheck"
+  default_prompt: "Use $release-readiness to prepare and verify this release candidate."

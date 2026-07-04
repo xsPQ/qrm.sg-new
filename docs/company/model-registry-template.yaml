@@ -1,24 +1,82 @@
 schema_version: 1
-updated_at: "[ISO-8601]"
+updated_at: "2026-07-04T22:00:00Z"
 owner: "Budget Controller"
+
 budget_sources:
-  - {id: openrouter, kind: metered, enabled: false, monthly_limit: null}
-  - {id: zai_coding_plan, kind: subscription, enabled: false, monthly_limit: null}
-  - {id: openai_codex_subscription, kind: subscription, enabled: false, monthly_limit: null}
-  - {id: deepseek_budget, kind: reserved_budget, enabled: false, monthly_limit: null}
-resources:
-  - id: "[stable-resource-id]"
-    model_slug: "[provider/model]"
-    adapter: "[paperclip-adapter]"
-    budget_source: "[source-id]"
-    resource_class: "free_tier|subscription|paid_low|paid_standard|paid_premium|reserved_budget"
+  - id: openrouter
+    kind: metered
+    enabled: true
+    monthly_limit_cents: 1000
+  - id: zai_coding_plan
+    kind: subscription
+    enabled: true
+    monthly_limit_cents: null
+  - id: openai_codex_subscription
+    kind: subscription
     enabled: false
-    capabilities: ["coding", "reasoning", "tools"]
+    monthly_limit_cents: null
+  - id: deepseek_budget
+    kind: reserved_budget
+    enabled: false
+    monthly_limit_cents: null
+
+resources:
+  - id: zai-coding-plan-glm-5-2
+    model_slug: zai-coding-plan/glm-5.2
+    adapter: paperclip-http-worker/opencode
+    budget_source: zai_coding_plan
+    resource_class: subscription
+    enabled: true
+    capabilities: [planning, coding, reasoning, tools, review]
     tier_by_workload: {planning: A, coding: A, review: A}
     context_limit: null
-    supports_tools: false
+    supports_tools: true
     supports_vision: false
-    restrictions: []
-    evaluation: {evaluated_at: "[YYYY-MM-DD]", sample_size: 0, success_rate: null, notes: "Unverified."}
-    cost: {currency: USD, input_per_million: null, output_per_million: null, fixed_subscription: null}
-    fallback_resource_ids: []
+    restrictions:
+      - Final security and release approvals require an independent reviewer.
+      - Premium escalation requires an explicit task trigger and approval.
+    evaluation:
+      evaluated_at: "2026-07-04"
+      sample_size: 0
+      success_rate: null
+      notes: "Operationally configured in the worker; project-specific quality evaluation is pending."
+    cost:
+      currency: USD
+      input_per_million: null
+      output_per_million: null
+      fixed_subscription: true
+    fallback_resource_ids: [openrouter-gemini-2-5-flash-lite]
+
+  - id: openrouter-gemini-2-5-flash-lite
+    model_slug: openrouter/google/gemini-2.5-flash-lite
+    adapter: paperclip-http-worker/opencode
+    budget_source: openrouter
+    resource_class: paid_low
+    enabled: true
+    capabilities: [coordination, classification, budget-monitoring, summarization]
+    tier_by_workload: {planning: C, coding: C, review: C}
+    context_limit: null
+    supports_tools: true
+    supports_vision: false
+    restrictions:
+      - Not permitted as sole decision-maker for security, auth, billing, migration, or release gates.
+      - Project metered spend is subject to the 80 percent warning and 100 percent hard stop.
+    evaluation:
+      evaluated_at: "2026-07-04"
+      sample_size: 0
+      success_rate: null
+      notes: "Configured for low-risk coordination and budget monitoring only."
+    cost:
+      currency: USD
+      input_per_million: null
+      output_per_million: null
+      fixed_subscription: false
+    fallback_resource_ids: [zai-coding-plan-glm-5-2]
+
+routing_defaults:
+  planning_resource_id: zai-coding-plan-glm-5-2
+  coding_resource_id: zai-coding-plan-glm-5-2
+  review_resource_id: zai-coding-plan-glm-5-2
+  low_risk_coordination_resource_id: openrouter-gemini-2-5-flash-lite
+  warn_percent: 80
+  hard_stop_percent: 100

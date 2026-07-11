@@ -31,6 +31,11 @@ Route::get('qr-codes/{qrCode}/edit', [QrCodeEditController::class, 'edit'])
     ->middleware(['auth', 'verified'])
     ->name('qr-codes.edit');
 
+// Analytics page for a single QR code (P3-T01 / §12.6).
+Route::get('qr-codes/{qrCode}/analytics', App\Livewire\QrCodeAnalytics::class)
+    ->middleware(['auth', 'verified'])
+    ->name('qr-codes.analytics');
+
 Route::view('profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');

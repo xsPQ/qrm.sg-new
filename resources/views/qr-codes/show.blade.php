@@ -42,8 +42,9 @@
                 </a>
                 <span class="text-gray-300">/</span>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                    {{ $codeAlias }}
+                    {{ $qrCode->title ?: $codeAlias }}
                 </h2>
+                <span class="text-xs text-gray-400">{{ $codeAlias }}</span>
                 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset {{ $badgeClasses }}">
                     {{ ucfirst($effectiveStatus) }}
                 </span>

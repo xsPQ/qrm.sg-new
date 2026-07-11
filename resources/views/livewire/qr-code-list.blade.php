@@ -84,7 +84,7 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{{ __('Code / Alias') }}</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{{ __('Name') }}</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{{ __('Type') }}</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{{ __('Status') }}</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{{ __('Scans') }}</th>
@@ -105,14 +105,12 @@
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <a href="{{ route('qr-codes.detail', $qrCode) }}"
-                                           class="text-sm font-medium text-gray-900 hover:text-indigo-600">
-                                            {{ $codeAlias }}
+                                           class="text-sm font-semibold text-gray-900 hover:text-indigo-600">
+                                            {{ $qrCode->title ?: ($route?->alias ?? $route?->code ?? 'Untitled') }}
                                         </a>
-                                        @if ($route?->alias && $route?->code)
-                                            <div class="text-xs text-gray-400">{{ $qrCode->title }} · {{ $route->code }}</div>
-                                        @elseif ($qrCode->title && $qrCode->title !== $codeAlias)
-                                            <div class="text-xs text-gray-400">{{ $qrCode->title }}</div>
-                                        @endif
+                                        <div class="text-xs text-gray-400">
+                                            {{ $route?->alias ? $route->alias . ' · ' . $route->code : $route?->code }}
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $typeLabel }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">
@@ -120,7 +118,15 @@
                                             {{ ucfirst($status) }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $qrCode->scan_count }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <a href="{{ route('qr-codes.analytics', $qrCode) }}"
+                                           class="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-500 font-medium">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                            </svg>
+                                            {{ $qrCode->scan_count }}
+                                        </a>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $qrCode->created_at?->format('Y-m-d') }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         @if ($qrCode->expires_at)
@@ -131,6 +137,13 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div class="flex items-center justify-end gap-4">
+                                            <a href="{{ route('qr-codes.analytics', $qrCode) }}"
+                                               class="text-gray-400 hover:text-indigo-600"
+                                               title="{{ __('Analytics') }}">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                                                </svg>
+                                            </a>
                                             <a href="{{ route('qr-codes.edit', $qrCode) }}" wire:navigate
                                                class="text-indigo-600 hover:text-indigo-500">
                                                 {{ __('Edit') }}

@@ -181,8 +181,8 @@
             <a href="#features">Funktionen</a>
             <a href="#types">QR-Typen</a>
             <a href="#pricing">Preise</a>
-            <a href="{{ route('login') }}">Login</a>
-            <a href="{{ route('register') }}" class="btn-primary">Kostenlos starten</a>
+            <a href="{{ route('qr.create-anonymous') }}">Try Now</a>
+            <a href="{{ route('register') }}" class="btn-primary">Sign Up Free</a>
         </div>
     </nav>
 
@@ -190,8 +190,8 @@
         <h1>QR-Codes <span>dynamisch</span>, messbar und kontrollierbar</h1>
         <p>Erstelle QR-Codes in Sekunden, ändere Inhalte jederzeit ohne neu zu drucken, tracke Scans in Echtzeit und setze Ablaufdaten — alles in einem Dashboard.</p>
         <div class="hero-cta">
-            <a href="{{ route('register') }}" class="btn-primary">Kostenlos starten →</a>
-            <a href="{{ route('login') }}" class="btn-outline">Einloggen</a>
+            <a href="{{ route('qr.create-anonymous') }}" class="btn-primary">{{ __('Try Now — No Sign-Up →') }}</a>
+            <a href="{{ route('login') }}" class="btn-outline">{{ __('Login') }}</a>
         </div>
     </section>
 
@@ -298,8 +298,8 @@
                 <p>QR-Codes dynamisch, messbar, kontrollierbar.</p>
             </div>
             <div class="footer-links">
-                <a href="{{ route('login') }}">Login</a>
-                <a href="{{ route('register') }}">Registrieren</a>
+                <a href="{{ route('qr.create-anonymous') }}">Try Now</a>
+                <a href="{{ route('register') }}">Sign Up</a>
                 <a href="#features">Funktionen</a>
                 <a href="#pricing">Preise</a>
             </div>

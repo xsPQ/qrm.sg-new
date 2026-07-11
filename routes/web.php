@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'landing')->name('landing');
 
+// Anonymous QR creation (FEAT-03)
+Route::get('/create', App\Livewire\AnonymousCreator::class)
+    ->name('qr.create-anonymous');
+
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');

@@ -177,9 +177,10 @@ class QrCodePublicResolverController extends Controller
     private function toSecuredResponse(mixed $result): Response
     {
         if ($result instanceof View) {
-            // Pass the View object directly so the response keeps its `original`
-            // (required for assertViewIs) while still rendering the HTML body.
-            return response($result, 200, ['Content-Type' => 'text/html'])
+            // Rebuild as a normal view response so feature tests can assert the
+            // original view name while still rendering HTML with headers.
+            return response()
+                ->view($result->name(), $result->getData(), 200)
                 ->withHeaders(self::SECURITY_HEADERS);
         }
 

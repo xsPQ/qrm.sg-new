@@ -1131,6 +1131,31 @@ Das Dashboard kennzeichnet den ursprünglichen Berechtigungsstand jeder Ressourc
 
 ---
 
+### 12.6 Analytics-UI und Tooling-Entscheidung
+
+Für die Analytics-Oberfläche wird **kein eigenes Chart-/BI-System neu entwickelt**. Stattdessen werden vorhandene freie Bausteine verwendet:
+
+- **Filament Widgets** für KPI-Kacheln, Tabellen und Dashboard-Integration
+- **Chart.js** für Zeitreihen und einfache Diagramme
+- bestehende Laravel- und Filament-Standards für Filter, Perioden und Detailansichten
+
+Ziel ist eine solide, wartbare Standardlösung ohne Vendor-Lock-in und ohne zusätzliche Lizenzkosten. Die fachliche Quelle der Wahrheit bleibt das bestehende Scan-/Aggregationsmodell; die UI ist nur die Darstellungsschicht.
+
+### 12.7 Dev/Test-Ausnahme für E-Mail-Verifikation
+
+Für lokale Entwicklung und explizit freigeschaltete Test-/Staging-Umgebungen darf die E-Mail-Verifikation via `APP_SKIP_EMAIL_VERIFICATION=true` umgangen werden. In CI und in produktionsnahen Tests bleibt die Verifikationslogik aktiv, damit die regulären Auth- und Security-Tests nicht verwässert werden.
+
+### 12.8 Offene Restarbeiten
+
+Die folgenden Restarbeiten werden als separate Tasks dokumentiert und priorisiert:
+
+- Passwortschutz-Flow für QR-Codes UX-seitig härten und testen
+- Analytics-Dashboard auf Basis der oben gewählten freien Tools umsetzen
+- Deutsch/Englisch-Lokalisierung ergänzen und Smoke-Tests darauf aufsetzen
+- Usability- und Resolver-Regressionen nach jedem Bugfix automatisiert absichern
+
+---
+
 ## 13. Glossar
 
 | Begriff | Definition |

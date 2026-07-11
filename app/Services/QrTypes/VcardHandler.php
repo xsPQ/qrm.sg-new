@@ -9,13 +9,13 @@ class VcardHandler implements QrTypeHandler
 {
     public function handle(QrCode $qrCode, Request $request): mixed
     {
-        $firstName = $qrCode->content['first_name'] ?? '';
-        $lastName = $qrCode->content['last_name'] ?? '';
+        $firstName = $qrCode->content['first_name'] ?? ($qrCode->content['firstName'] ?? '');
+        $lastName = $qrCode->content['last_name'] ?? ($qrCode->content['lastName'] ?? '');
         $organization = $qrCode->content['organization'] ?? null;
         $title = $qrCode->content['title'] ?? null;
         $email = $qrCode->content['email'] ?? null;
-        $phoneMobile = $qrCode->content['phone_mobile'] ?? null;
-        $phoneWork = $qrCode->content['phone_work'] ?? null;
+        $phoneMobile = $qrCode->content['phone_mobile'] ?? ($qrCode->content['phoneMobile'] ?? $qrCode->content['phone'] ?? null);
+        $phoneWork = $qrCode->content['phone_work'] ?? ($qrCode->content['phoneWork'] ?? null);
         $website = $qrCode->content['website'] ?? null;
         $addressStreet = $qrCode->content['address_street'] ?? null;
         $addressCity = $qrCode->content['address_city'] ?? null;
@@ -49,6 +49,7 @@ class VcardHandler implements QrTypeHandler
             'email' => $email,
             'phoneMobile' => $phoneMobile,
             'phoneWork' => $phoneWork,
+            'phone' => $phoneMobile ?? $phoneWork,
             'website' => $website,
             'addressStreet' => $addressStreet,
             'addressCity' => $addressCity,

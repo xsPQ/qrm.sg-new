@@ -212,4 +212,20 @@ class QrCodePublicResolverTest extends TestCase
         $response->assertViewIs('qr-types.message');
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
     }
+
+    public function test_public_resolver_serves_contact_alias_type_as_html(): void
+    {
+        $this->createRouteWithQrCode([
+            'type' => 'contact',
+            'content' => ['firstName' => 'Max', 'lastName' => 'Mustermann', 'phone' => '+49 123 456789', 'email' => 'max@example.com'],
+        ]);
+
+        $response = $this->get('/ABC123');
+
+        $response->assertOk();
+        $response->assertViewIs('qr-types.vcard');
+        $response->assertSee('Max Mustermann');
+        $response->assertSee('max@example.com');
+        $response->assertHeader('X-Content-Type-Options', 'nosniff');
+    }
 }

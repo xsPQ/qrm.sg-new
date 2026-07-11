@@ -123,4 +123,5 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'skip_email_verification' => env('APP_SKIP_EMAIL_VERIFICATION', false),
 ];

@@ -52,6 +52,7 @@ class QrCodeResolver
             QrCodeType::Crypto->value => new CryptoHandler,
             QrCodeType::Event->value => new EventHandler,
             QrCodeType::Vcard->value => new VcardHandler,
+            'contact' => new VcardHandler, // alias: Pflichtenheft uses "Contact", enum uses "vcard"
         ];
     }
 

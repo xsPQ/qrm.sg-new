@@ -1154,9 +1154,9 @@ Auf Basis der UX-Analyse wurden folgende Features definiert und teilweise umgese
 | **FEAT-01:** QR-Code Naming als Dashboard-Anker | ✅ Umgesetzt | Sprint 1 |
 | **FEAT-02:** Analytics-Sichtbarkeit im Dashboard | ✅ Umgesetzt | Sprint 1 |
 | **FEAT-03:** Anonyme QR-Erstellung ohne Registrierung | ✅ Umgesetzt | Sprint 2 |
-| **FEAT-04:** Visuelle QR-Anpassung (Farbe, Logo, Dots) | 🔨 In Arbeit | Sprint 3 |
-| **FEAT-05:** Alias-Tiers & Premium-Shortcodes | 🔨 Teilweise (Backend) | Sprint 4 |
-| **FEAT-06:** A/B Testing für QR-Ziel-URLs | 📋 Geplant | Sprint 5 |
+| **FEAT-04:** Visuelle QR-Anpassung (Farbe, Logo, Dots) | ✅ Umgesetzt | Sprint 3 |
+| **FEAT-05:** Alias-Tiers & Premium-Shortcodes | ✅ Backend umgesetzt | Sprint 4 |
+| **FEAT-06:** A/B Testing für QR-Ziel-URLs | 🔨 In Arbeit | Sprint 5 |
 
 **FEAT-03 Details (Anonyme Erstellung):**
 - Landing Page bietet „Try Now — No Sign-Up" CTA
@@ -1173,6 +1173,16 @@ Auf Basis der UX-Analyse wurden folgende Features definiert und teilweise umgese
 | Business/Premium | Premium-Alias 2–32 Zeichen | Zusätzliche Monetarisierung |
 
 Premium-Shortcodes (≤4 Zeichen) sind Business vorbehalten und als kostenpflichtiges Upgrade vorgesehen. Die Preismodellierung (einmalig/monatlich/lifetime) wird separat definiert.
+
+**FEAT-04 Details (Visuelle Anpassung):**
+- Farben: Vorder- und Hintergrundfarbe wählbar (alle Pläne)
+- Dot-Stile: Square, Round, Extra-Round (alle Pläne)
+- Error-Correction: L/M für alle, Q/H für Pro+
+- Gradient: Von/Bis-Farbe mit Winkel (Pro+)
+- Logo: Upload, wird in die Mitte platziert (Pro+)
+- Margin-Control: Quiet-Zone 0–50px
+- Backend: `QrStyleService` als zentrale Instanz mit Entitlement-Gating
+- Speicherung im bestehenden `settings` JSON-Feld — keine Migration nötig
 
 ---
 

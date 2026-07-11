@@ -93,6 +93,14 @@ class EntitlementGate
     {
         $locked = $snapshot->isFree();
 
+        // Alias length tiers (FEAT-05)
+        $aliasMinLength = match ($snapshot->plan()) {
+            'free' => 8,      // Free: long aliases only (8–32 chars)
+            'pro' => 4,       // Pro: short aliases (4–32 chars)
+            'business' => 2,  // Business: very short (2–32 chars)
+            default => 8,
+        };
+
         return [
             'plan' => $snapshot->plan(),
             'can_use_custom_alias' => $snapshot->allowsCustomAlias(),
@@ -102,6 +110,9 @@ class EntitlementGate
             'download_profile' => $snapshot->downloadProfile(),
             'analytics' => $snapshot->analytics(),
             'is_free' => $locked,
+            'alias_min_length' => $aliasMinLength,
+            'alias_max_length' => 32,
+            'can_use_premium_alias' => $snapshot->plan() === 'business', // ≤4 chars = premium
             'upgrade_hint' => $locked
                 ? 'Upgrade to Pro or Business to unlock custom aliases, password protection and branding removal.'
                 : null,

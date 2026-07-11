@@ -1145,14 +1145,34 @@ Ziel ist eine solide, wartbare Standardlösung ohne Vendor-Lock-in und ohne zus�
 
 Für lokale Entwicklung und explizit freigeschaltete Test-/Staging-Umgebungen darf die E-Mail-Verifikation via `APP_SKIP_EMAIL_VERIFICATION=true` umgangen werden. In CI und in produktionsnahen Tests bleibt die Verifikationslogik aktiv, damit die regulären Auth- und Security-Tests nicht verwässert werden.
 
-### 12.8 Offene Restarbeiten
+### 12.8 Feature-Roadmap v2 (Juli 2026)
 
-Die folgenden Restarbeiten werden als separate Tasks dokumentiert und priorisiert:
+Auf Basis der UX-Analyse wurden folgende Features definiert und teilweise umgesetzt:
 
-- Passwortschutz-Flow für QR-Codes UX-seitig härten und testen
-- Analytics-Dashboard auf Basis der oben gewählten freien Tools umsetzen
-- Deutsch/Englisch-Lokalisierung ergänzen und Smoke-Tests darauf aufsetzen
-- Usability- und Resolver-Regressionen nach jedem Bugfix automatisiert absichern
+| Feature | Status | Sprint |
+|---|---|---|
+| **FEAT-01:** QR-Code Naming als Dashboard-Anker | ✅ Umgesetzt | Sprint 1 |
+| **FEAT-02:** Analytics-Sichtbarkeit im Dashboard | ✅ Umgesetzt | Sprint 1 |
+| **FEAT-03:** Anonyme QR-Erstellung ohne Registrierung | ✅ Umgesetzt | Sprint 2 |
+| **FEAT-04:** Visuelle QR-Anpassung (Farbe, Logo, Dots) | 🔨 In Arbeit | Sprint 3 |
+| **FEAT-05:** Alias-Tiers & Premium-Shortcodes | 🔨 Teilweise (Backend) | Sprint 4 |
+| **FEAT-06:** A/B Testing für QR-Ziel-URLs | 📋 Geplant | Sprint 5 |
+
+**FEAT-03 Details (Anonyme Erstellung):**
+- Landing Page bietet „Try Now — No Sign-Up" CTA
+- Anonymer Nutzer kann 1 URL-QR-Code erstellen
+- Code ist 24h gültig, danach automatische Löschung
+- Nach Erstellung erscheint Conversion-Funnel mit Registrierungs-Hinweis
+- Wasserzeichen/Branding ist für zukünftige Implementierung vorgesehen
+
+**FEAT-05 Details (Alias-Tiers):**
+| Tier | Alias-Regeln | Verfügbarkeit |
+|---|---|---|
+| Free | Zufälliger 6-Zeichen-Code; Custom Alias 8–32 Zeichen | Kostenlos |
+| Pro | Custom Alias 4–32 Zeichen | Im Abo inklusive |
+| Business/Premium | Premium-Alias 2–32 Zeichen | Zusätzliche Monetarisierung |
+
+Premium-Shortcodes (≤4 Zeichen) sind Business vorbehalten und als kostenpflichtiges Upgrade vorgesehen. Die Preismodellierung (einmalig/monatlich/lifetime) wird separat definiert.
 
 ---
 

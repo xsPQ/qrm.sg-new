@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Qr;
 use App\Domain\Entitlement\EntitlementGate;
 use App\Http\Controllers\Controller;
 use App\Models\QrCodeRoute;
+use App\Services\QrStyleService;
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
@@ -21,6 +22,7 @@ class QrCodeDownloadController extends Controller
 {
     public function __construct(
         private EntitlementGate $gate,
+        private QrStyleService $styleService,
     ) {}
 
     public function downloadSvg(Request $request, string $code): Response|StreamedResponse
@@ -71,6 +73,13 @@ class QrCodeDownloadController extends Controller
 
         $needsBranding = $this->gate->requiresBranding($snapshot);
 
+        // Visual customization (FEAT-04): resolve per-code style from
+        // settings.style, gated by the code's entitlement snapshot.
+        $style = $this->styleService->resolveStyle(
+            $qrCode->settings['style'] ?? null,
+            $snapshot,
+        );
+
         if ($format === 'svg') {
             $builder = Builder::create()
                 ->data($data)
@@ -79,6 +88,10 @@ class QrCodeDownloadController extends Controller
                 ->size($size)
                 ->margin(10)
                 ->writer(new SvgWriter());
+
+            // Apply visual customization before build.
+            $this->styleService->applyStyle($builder, $style);
+            $builder->size($size);
 
             $result = $builder->build();
             $content = $result->getString();
@@ -95,6 +108,10 @@ class QrCodeDownloadController extends Controller
                 ->size($size)
                 ->margin(10)
                 ->writer(new PngWriter());
+
+            // Apply visual customization before build.
+            $this->styleService->applyStyle($builder, $style);
+            $builder->size($size);
 
             if ($needsBranding) {
                 $builder = $builder->labelText('qrm.sg')

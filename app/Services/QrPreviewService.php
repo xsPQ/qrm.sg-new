@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domain\Entitlement\EntitlementSnapshot;
 use App\Domain\QrTypes\SocialQr;
 use App\Enums\QrCodeType;
 use Endroid\QrCode\Builder\Builder;
@@ -20,6 +21,10 @@ use Endroid\QrCode\Writer\PngWriter;
  * public resolver (P1-T11). When no alias is set yet, it encodes a
  * representative content payload (the URL, the WiFi: string, a vCard, …) so
  * the user still gets a meaningful, type-aware preview while typing.
+ *
+ * Visual customization (FEAT-04): foreground/background colors, dot (block)
+ * roundness, error-correction level, gradient and embedded logo are applied
+ * through {@see QrStyleService}, gated by the caller's entitlement snapshot.
  */
 class QrPreviewService
 {
@@ -64,22 +69,43 @@ class QrPreviewService
      * Render a payload as a PNG data URI for inline <img> display.
      * Never throws: on any rendering error it returns null and the UI shows a
      * neutral placeholder instead of breaking the whole form.
+     *
+     * Visual customization (FEAT-04): when $style and $snapshot are provided,
+     * the rendered preview reflects the user's color / dot-style / gradient /
+     * logo selections, gated by their entitlement tier.
+     *
+     * @param  array<string,mixed>|null  $style
      */
-    public function dataUri(string $payload, int $size = 240): ?string
-    {
+    public function dataUri(
+        string $payload,
+        int $size = 240,
+        ?array $style = null,
+        ?EntitlementSnapshot $snapshot = null,
+    ): ?string {
         if ($payload === '') {
             return null;
         }
 
         try {
-            $result = Builder::create()
+            $builder = Builder::create()
                 ->writer(new PngWriter())
                 ->data($payload)
                 ->encoding(new Encoding('UTF-8'))
                 ->errorCorrectionLevel(ErrorCorrectionLevel::Medium)
                 ->size($size)
-                ->margin(8)
-                ->build();
+                ->margin(8);
+
+            // Apply visual customization (FEAT-04) when style data is present.
+            if ($style !== null && $snapshot !== null) {
+                $styleService = app(QrStyleService::class);
+                $resolved = $styleService->resolveStyle($style, $snapshot);
+                $styleService->applyStyle($builder, $resolved);
+
+                // Re-apply size/margin since applyStyle may override margin.
+                $builder->size($size);
+            }
+
+            $result = $builder->build();
 
             return $result->getDataUri();
         } catch (\Throwable) {

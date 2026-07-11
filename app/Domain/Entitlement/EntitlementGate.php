@@ -113,8 +113,18 @@ class EntitlementGate
             'alias_min_length' => $aliasMinLength,
             'alias_max_length' => 32,
             'can_use_premium_alias' => $snapshot->plan() === 'business', // ≤4 chars = premium
+
+            // Visual customization (FEAT-04): colors and basic dot styles are
+            // available on all plans; gradient, logo and premium error-
+            // correction levels (Q, H) require Pro or above.
+            'can_set_colors' => true,
+            'can_set_dot_style' => true,
+            'can_use_gradient' => $snapshot->isPaid(),
+            'can_use_logo' => $snapshot->isPaid(),
+            'can_use_premium_ec' => $snapshot->isPaid(),
+
             'upgrade_hint' => $locked
-                ? 'Upgrade to Pro or Business to unlock custom aliases, password protection and branding removal.'
+                ? 'Upgrade to Pro or Business to unlock custom aliases, password protection, branding removal, gradients and logo embedding.'
                 : null,
         ];
     }

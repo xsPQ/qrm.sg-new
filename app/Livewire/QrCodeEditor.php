@@ -61,6 +61,12 @@ class QrCodeEditor extends Component
 
     public bool $showAdvanced = false;
 
+    // Visual customization (FEAT-04).
+    /** @var array<string,mixed> */
+    public array $style = [];
+
+    public bool $showStylePanel = false;
+
     // Live alias-check state (mirrors the Creator).
     public ?string $aliasStatus = null; // null|available|taken|reserved|invalid
     public ?string $aliasMessage = null;
@@ -86,6 +92,7 @@ class QrCodeEditor extends Component
         $this->alias = $qrCode->route?->alias;
         $this->burn = (bool) $qrCode->burn;
         $this->maxScans = $qrCode->max_scans !== null ? (int) $qrCode->max_scans : null;
+        $this->style = $this->seedStyle($qrCode);
 
         // Derive the feature flags from the code's own immutable snapshot so the
         // UI gates alias/password correctly even after a plan downgrade.
@@ -188,6 +195,7 @@ class QrCodeEditor extends Component
             'content' => $this->cleanContent($validated['content']),
             'burn' => $validated['burn'] ?? $this->burn,
             'max_scans' => $validated['maxScans'] ?? null,
+            'settings' => ['style' => $this->cleanStyle($this->style)],
             // Always send the alias key so the service can set, change or
             // clear it under the shared namespace (409-equivalent on collision).
             'alias' => ! empty($validated['alias']) ? $validated['alias'] : null,
@@ -297,5 +305,49 @@ class QrCodeEditor extends Component
     protected function clearOutcome(): void
     {
         $this->successMessage = null;
+    }
+
+    /**
+     * Seed visual style from stored settings, falling back to defaults
+     * (FEAT-04).
+     *
+     * @return array<string,mixed>
+     */
+    protected function seedStyle(QrCode $qrCode): array
+    {
+        $stored = is_array($qrCode->settings) ? ($qrCode->settings['style'] ?? []) : [];
+
+        return array_merge($this->defaultStyle(), $stored);
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    protected function defaultStyle(): array
+    {
+        return [
+            'fg_color' => '#000000',
+            'bg_color' => '#ffffff',
+            'dot_style' => 'square',
+            'error_correction' => 'M',
+            'margin' => 10,
+        ];
+    }
+
+    /**
+     * @param  array<string,mixed>  $style
+     * @return array<string,mixed>
+     */
+    protected function cleanStyle(array $style): array
+    {
+        $clean = [];
+        foreach ($style as $key => $value) {
+            if ($value === '' || $value === null) {
+                continue;
+            }
+            $clean[$key] = $value;
+        }
+
+        return $clean;
     }
 }

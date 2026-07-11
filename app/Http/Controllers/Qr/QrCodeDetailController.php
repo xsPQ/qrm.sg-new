@@ -17,6 +17,9 @@ use Illuminate\Support\Carbon;
  * Access is restricted to the code's owner and admins through the QrCodePolicy
  * (P1-T15). Renders the full metadata set, a type-aware payload preview, the
  * rendered QR image and links to the SVG/PNG download endpoints (P1-T13).
+ *
+ * Visual customization (FEAT-04): the preview renders with the code's stored
+ * style settings, gated by the code's entitlement snapshot.
  */
 class QrCodeDetailController extends Controller
 {
@@ -40,7 +43,16 @@ class QrCodeDetailController extends Controller
             ?: (parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'localhost');
         $shortLink = "https://{$host}/{$code}";
 
-        $previewDataUri = $this->previewService->dataUri($shortLink, 320);
+        // Apply the code's stored visual style to the preview (FEAT-04).
+        $style = $qrCode->settings['style'] ?? null;
+        $snapshot = $qrCode->entitlementSnapshot();
+
+        $previewDataUri = $this->previewService->dataUri(
+            $shortLink,
+            320,
+            $style,
+            $snapshot,
+        );
 
         // last_scanned_at (Pflichtenheft §3.6.1 metadata): the most recent
         // scan timestamp for this code, read from the scans table.

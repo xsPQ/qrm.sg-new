@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Domain\Entitlement\EntitlementGate;
+use App\Domain\Entitlement\EntitlementSnapshot;
 use App\Domain\QrTypes\ContactQr;
 use App\Domain\QrTypes\CryptoQr;
 use App\Domain\QrTypes\EventQr;
@@ -52,6 +53,12 @@ class QrCreator extends Component
 
     public bool $showAdvanced = false;
 
+    // Visual customization (FEAT-04).
+    /** @var array<string,mixed> */
+    public array $style = [];
+
+    public bool $showStylePanel = false;
+
     // Live alias-check state.
     public ?string $aliasStatus = null; // null|available|taken|reserved|invalid
     public ?string $aliasMessage = null;
@@ -80,6 +87,7 @@ class QrCreator extends Component
         }
 
         $this->content = $this->defaultContent($this->type);
+        $this->style = $this->defaultStyle();
 
         $this->freeTier = $qrCodeService->freeTierStatus(auth()->user());
         $this->features = $qrCodeService->featureStatus(auth()->user());
@@ -193,6 +201,7 @@ class QrCreator extends Component
             'content' => $this->cleanContent($validated['content']),
             'burn' => $validated['burn'] ?? false,
             'max_scans' => $validated['maxScans'] ?? null,
+            'settings' => ['style' => $this->cleanStyle($this->style)],
         ];
 
         if (!empty($validated['alias'])) {
@@ -249,6 +258,8 @@ class QrCreator extends Component
         $this->burn = false;
         $this->maxScans = null;
         $this->showAdvanced = false;
+        $this->style = $this->defaultStyle();
+        $this->showStylePanel = false;
         $this->resetAliasCheck();
     }
 
@@ -340,7 +351,18 @@ class QrCreator extends Component
 
     public function previewDataUri(): ?string
     {
-        return app(QrPreviewService::class)->dataUri($this->previewPayload());
+        $preview = app(QrPreviewService::class);
+
+        $snapshot = EntitlementSnapshot::forPlan(
+            $this->features['plan'] ?? 'free',
+        );
+
+        return $preview->dataUri(
+            $this->previewPayload(),
+            240,
+            $this->style,
+            $snapshot,
+        );
     }
 
     public function getLimitReachedProperty(): bool
@@ -455,6 +477,41 @@ class QrCreator extends Component
         $this->created = null;
         $this->successMessage = null;
         $this->upgradeMessage = null;
+    }
+
+    /**
+     * Default visual style (FEAT-04): black-on-white, square dots, medium EC.
+     *
+     * @return array<string,mixed>
+     */
+    protected function defaultStyle(): array
+    {
+        return [
+            'fg_color' => '#000000',
+            'bg_color' => '#ffffff',
+            'dot_style' => 'square',
+            'error_correction' => 'M',
+            'margin' => 10,
+        ];
+    }
+
+    /**
+     * Drop empty/null style fields so stored settings stay clean (FEAT-04).
+     *
+     * @param  array<string,mixed>  $style
+     * @return array<string,mixed>
+     */
+    protected function cleanStyle(array $style): array
+    {
+        $clean = [];
+        foreach ($style as $key => $value) {
+            if ($value === '' || $value === null) {
+                continue;
+            }
+            $clean[$key] = $value;
+        }
+
+        return $clean;
     }
 
     protected function handleFreeTierExceeded(FreeTierLimitExceededException $e, QrCodeService $qrCodeService): void

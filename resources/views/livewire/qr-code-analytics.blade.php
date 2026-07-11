@@ -74,6 +74,45 @@
                 </div>
             </div>
 
+            <!-- A/B Test Variants (FEAT-06) -->
+            @if($hasVariants)
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-1">{{ __('A/B Test Variants') }}</h3>
+                <p class="text-sm text-gray-500 mb-4">{{ __('Per-variant scan distribution and performance.') }}</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-2 px-3 text-gray-500 font-medium">{{ __('Variant') }}</th>
+                                <th class="text-left py-2 px-3 text-gray-500 font-medium">{{ __('Destination URL') }}</th>
+                                <th class="text-left py-2 px-3 text-gray-500 font-medium">{{ __('Device') }}</th>
+                                <th class="text-right py-2 px-3 text-gray-500 font-medium">{{ __('Weight') }}</th>
+                                <th class="text-right py-2 px-3 text-gray-500 font-medium">{{ __('Scans') }}</th>
+                                <th class="text-right py-2 px-3 text-gray-500 font-medium">{{ __('Share') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php $totalVariantScans = array_sum(array_column($variantStats, 'scan_count')); @endphp
+                            @foreach($variantStats as $stat)
+                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                    <td class="py-2 px-3">
+                                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs">{{ $stat['label'] }}</span>
+                                    </td>
+                                    <td class="py-2 px-3 text-gray-700 max-w-xs truncate" title="{{ $stat['url'] }}">{{ $stat['url'] }}</td>
+                                    <td class="py-2 px-3 text-gray-700">{{ $stat['device_target'] ? ucfirst($stat['device_target']) : '—' }}</td>
+                                    <td class="py-2 px-3 text-right text-gray-700">{{ $stat['weight'] }}</td>
+                                    <td class="py-2 px-3 text-right font-semibold text-gray-900">{{ number_format($stat['scan_count']) }}</td>
+                                    <td class="py-2 px-3 text-right text-gray-600">
+                                        {{ $totalVariantScans > 0 ? number_format($stat['scan_count'] / $totalVariantScans * 100, 1) . '%' : '—' }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @endif
+
             <!-- Recent Scans Table -->
             <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('Recent Scans') }}</h3>

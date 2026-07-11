@@ -20,11 +20,13 @@ class FeatureNotEntitledException extends RuntimeException
 {
     public const FEATURE_CUSTOM_ALIAS = 'custom_alias';
     public const FEATURE_PASSWORD_PROTECTION = 'password_protection';
+    public const FEATURE_AB_TESTING = 'ab_testing';
 
     /** Human-readable labels for the structured upgrade hint. */
     private const LABELS = [
         self::FEATURE_CUSTOM_ALIAS => 'Custom aliases',
         self::FEATURE_PASSWORD_PROTECTION => 'Password protection',
+        self::FEATURE_AB_TESTING => 'A/B testing',
     ];
 
     public function __construct(

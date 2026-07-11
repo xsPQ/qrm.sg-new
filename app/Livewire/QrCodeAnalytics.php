@@ -79,6 +79,32 @@ class QrCodeAnalytics extends Component
             ->limit(10)
             ->get();
 
+        // FEAT-06: Per-variant A/B test metrics
+        $variants = $this->qrCode->variants()
+            ->orderBy('sort_order')
+            ->get();
+
+        $variantStats = [];
+        if ($variants->isNotEmpty()) {
+            $variantScans = Scan::where('qr_code_id', $qrId)
+                ->whereNotNull('qr_code_variant_id')
+                ->selectRaw('qr_code_variant_id, COUNT(*) as count')
+                ->groupBy('qr_code_variant_id')
+                ->pluck('count', 'qr_code_variant_id')
+                ->toArray();
+
+            foreach ($variants as $variant) {
+                $variantStats[] = [
+                    'label' => $variant->label,
+                    'url' => $variant->url,
+                    'scan_count' => $variant->scan_count,
+                    'scan_record_count' => $variantScans[$variant->id] ?? 0,
+                    'weight' => $variant->weight,
+                    'device_target' => $variant->device_target,
+                ];
+            }
+        }
+
         return view('livewire.qr-code-analytics', [
             'totalScans' => $totalScans,
             'scansToday' => $scansToday,
@@ -88,6 +114,8 @@ class QrCodeAnalytics extends Component
             'topDevices' => $topDevices,
             'topCountries' => $topCountries,
             'recentScans' => $recentScans,
+            'variantStats' => $variantStats,
+            'hasVariants' => !empty($variantStats),
         ]);
     }
 }

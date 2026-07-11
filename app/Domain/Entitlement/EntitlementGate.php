@@ -60,6 +60,22 @@ class EntitlementGate
     }
 
     /**
+     * Reject an A/B testing write for a snapshot that does not allow it
+     * (Free, FEAT-06). Pro/Business snapshots pass through.
+     *
+     * @throws FeatureNotEntitledException
+     */
+    public function assertAbTesting(EntitlementSnapshot $snapshot): void
+    {
+        if ($snapshot->isFree()) {
+            throw FeatureNotEntitledException::forFeature(
+                FeatureNotEntitledException::FEATURE_AB_TESTING,
+                $snapshot,
+            );
+        }
+    }
+
+    /**
      * Whether the qrm.sg branding must be rendered for this code's download
      * artifacts. Driven by the snapshot's branding field (§2.1/§2.2): the Free
      * snapshot carries `qrm.sg`; Pro/Business carry `none`.
@@ -122,6 +138,9 @@ class EntitlementGate
             'can_use_gradient' => $snapshot->isPaid(),
             'can_use_logo' => $snapshot->isPaid(),
             'can_use_premium_ec' => $snapshot->isPaid(),
+
+            // A/B Testing (FEAT-06): Pro+ only
+            'can_use_ab_testing' => $snapshot->isPaid(),
 
             'upgrade_hint' => $locked
                 ? 'Upgrade to Pro or Business to unlock custom aliases, password protection, branding removal, gradients and logo embedding.'

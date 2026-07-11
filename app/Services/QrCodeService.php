@@ -308,4 +308,60 @@ class QrCodeService
             ? now()->addDays((int) config('qr.free.expiry_days', 30))
             : null;
     }
+
+    /**
+     * FEAT-06: Sync A/B test variants for a QR code.
+     *
+     * Replaces all existing variants with the given set. Entitlement-gated:
+     * only Pro/Business snapshots may have variants. Free codes are rejected
+     * with FeatureNotEntitledException.
+     *
+     * @param  array<int, array{label:string,url:string,weight?:int,device_target?:?string}>  $variantsData
+     */
+    public function syncVariants(QrCode $qrCode, array $variantsData): void
+    {
+        $this->gate->assertAbTesting($qrCode->entitlementSnapshot());
+
+        DB::transaction(function () use ($qrCode, $variantsData) {
+            $qrCode->variants()->delete();
+
+            $sortOrder = 0;
+            foreach ($variantsData as $variantData) {
+                $qrCode->variants()->create([
+                    'label' => strtoupper(substr(trim($variantData['label']), 0, 10)),
+                    'url' => trim($variantData['url']),
+                    'weight' => max(1, (int) ($variantData['weight'] ?? 1)),
+                    'device_target' => $variantData['device_target'] ?? null,
+                    'sort_order' => $sortOrder++,
+                    'scan_count' => 0,
+                ]);
+            }
+
+            // Persist the strategy in settings.ab_testing.
+            $settings = $qrCode->settings ?? [];
+            $settings['ab_testing'] = [
+                'strategy' => $variantsData[0]['device_target'] ?? null
+                    ? 'device'
+                    : 'random',
+                'enabled' => count($variantsData) > 0,
+            ];
+            $qrCode->settings = $settings;
+            $qrCode->save();
+        });
+    }
+
+    /**
+     * FEAT-06: Remove all variants from a QR code (disable A/B testing).
+     */
+    public function clearVariants(QrCode $qrCode): void
+    {
+        DB::transaction(function () use ($qrCode) {
+            $qrCode->variants()->delete();
+
+            $settings = $qrCode->settings ?? [];
+            unset($settings['ab_testing']);
+            $qrCode->settings = $settings ?: null;
+            $qrCode->save();
+        });
+    }
 }

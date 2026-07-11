@@ -29,7 +29,7 @@ class ScanRecorder
      * and the response meta. Does not persist.
      *
      * @param  array{ip:?string,user_agent:string,referer:?string,accept_language:?string,utm_source:?string,utm_medium:?string,utm_campaign:?string,utm_term:?string,utm_content:?string}  $request
-     * @param  array{response_type:string,http_status:int,response_time_ms:int}  $response
+     * @param  array{response_type:string,http_status:int,response_time_ms:int,qr_code_variant_id?:?int}  $response
      * @return array<string,mixed>
      */
     public function buildRow(int $qrCodeId, array $request, array $response): array
@@ -43,6 +43,7 @@ class ScanRecorder
 
         $rawData = [
             'qr_code_id' => $qrCodeId,
+            'qr_code_variant_id' => $response['qr_code_variant_id'] ?? null,
             'ip_hash' => hash_hmac('sha256', $ip ?? '', (string) config('app.key')),
             'user_agent_raw' => $ua,
             'user_agent_parsed' => ScanAttributes::parseUserAgent($ua),
@@ -74,7 +75,7 @@ class ScanRecorder
      * Build and persist a single scan row.
      *
      * @param  array{ip:?string,user_agent:string,referer:?string,accept_language:?string,utm_source:?string,utm_medium:?string,utm_campaign:?string,utm_term:?string,utm_content:?string}  $request
-     * @param  array{response_type:string,http_status:int,response_time_ms:int}  $response
+     * @param  array{response_type:string,http_status:int,response_time_ms:int,qr_code_variant_id?:?int}  $response
      */
     public function record(int $qrCodeId, array $request, array $response): void
     {

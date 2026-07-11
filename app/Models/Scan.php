@@ -16,6 +16,7 @@ class Scan extends Model
 
     protected $fillable = [
         'qr_code_id',
+        'qr_code_variant_id',
         'ip_hash',
         'user_agent_raw',
         'user_agent_parsed',

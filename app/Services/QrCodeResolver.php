@@ -15,6 +15,8 @@ use App\Services\QrTypes\SocialHandler;
 use App\Services\QrTypes\UrlHandler;
 use App\Services\QrTypes\VcardHandler;
 use App\Services\QrTypes\WifiHandler;
+use App\Services\VariantSelector;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -26,11 +28,17 @@ class QrCodeResolver
 
     private ResolverCache $cache;
 
+    private VariantSelector $variantSelector;
+
+    /** Tracks the selected variant id for the current scan (FEAT-06). */
+    private ?int $currentVariantId = null;
+
     public function __construct(
         ?LocalGeoIpResolver $geoIpResolver = null,
         AllowlistGuard $allowlistGuard = new AllowlistGuard(),
         ?ScanRecorder $scanRecorder = null,
         ?ResolverCache $cache = null,
+        ?VariantSelector $variantSelector = null,
     ) {
         $this->scanRecorder = $scanRecorder ?? new ScanRecorder(
             $geoIpResolver ?? new LocalGeoIpResolver(
@@ -42,6 +50,7 @@ class QrCodeResolver
         );
 
         $this->cache = $cache ?? new ResolverCache();
+        $this->variantSelector = $variantSelector ?? new VariantSelector();
 
         $this->handlers = [
             QrCodeType::Url->value => new UrlHandler,
@@ -97,8 +106,18 @@ class QrCodeResolver
 
         $startTime = microtime(true);
 
-        $handler = $this->getHandler($qrCode->type);
-        $response = $handler->handle($qrCode, $request);
+        // FEAT-06: A/B Testing — if this QR code has variants configured,
+        // select one by strategy, increment its scan count, and redirect
+        // to the variant's URL. The variant_id is stamped on the scan row
+        // for per-variant analytics. Only applies to url/redirect types.
+        $this->currentVariantId = null;
+
+        if ($this->supportsVariants($qrCode) && $qrCode->hasVariants()) {
+            $response = $this->resolveWithVariant($qrCode, $request);
+        } else {
+            $handler = $this->getHandler($qrCode->type);
+            $response = $handler->handle($qrCode, $request);
+        }
 
         $this->logScan($qrCode, $request, $startTime, $response);
 
@@ -212,6 +231,46 @@ class QrCodeResolver
         return $affected > 0;
     }
 
+    /**
+     * FEAT-06: Whether the QR code type supports A/B test variants.
+     * Only 'url' and 'redirect' types can have multiple destination URLs.
+     */
+    private function supportsVariants(QrCode $qrCode): bool
+    {
+        return in_array($qrCode->type, ['url', 'redirect'], true);
+    }
+
+    /**
+     * FEAT-06: Select a variant by strategy, increment its scan count,
+     * and redirect to the variant's destination URL.
+     */
+    private function resolveWithVariant(QrCode $qrCode, Request $request): RedirectResponse
+    {
+        $variant = $this->variantSelector->selectAndIncrement($qrCode, $request);
+
+        // Fallback: if variant selection returned null (race condition edge
+        // case), delegate to the normal handler.
+        if ($variant === null) {
+            return $this->getHandler($qrCode->type)->handle($qrCode, $request);
+        }
+
+        $this->currentVariantId = $variant->id;
+
+        $url = $variant->url;
+
+        if (!filter_var($url, FILTER_VALIDATE_URL)) {
+            $url = 'https://' . ltrim($url, '/');
+        }
+
+        $status = $qrCode->content['redirect_code']
+            ?? $qrCode->settings['redirect_code']
+            ?? 302;
+
+        $status = in_array((int) $status, [301, 302, 307, 308], true) ? (int) $status : 302;
+
+        return redirect()->away($url, $status);
+    }
+
     private function logScan(QrCode $qrCode, Request $request, float $startTime, mixed $response): void
     {
         $responseTimeMs = (int) round((microtime(true) - $startTime) * 1000);
@@ -233,6 +292,7 @@ class QrCodeResolver
                 'response_type' => $responseType,
                 'http_status' => $httpStatus,
                 'response_time_ms' => $responseTimeMs,
+                'qr_code_variant_id' => $this->currentVariantId,
             ],
         );
     }

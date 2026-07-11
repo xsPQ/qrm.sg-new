@@ -165,6 +165,33 @@ class QrCode extends Model
         return $this->hasOne(QrCodeRoute::class);
     }
 
+    public function variants(): HasMany
+    {
+        return $this->hasMany(QrCodeVariant::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Whether this QR code has A/B test variants configured (FEAT-06).
+     * Reads from the loaded relationship collection to avoid N+1 queries.
+     */
+    public function hasVariants(): bool
+    {
+        $variants = $this->relationLoaded('variants')
+            ? $this->variants
+            : $this->variants()->get();
+
+        return $variants->isNotEmpty();
+    }
+
+    /**
+     * The A/B testing strategy for this QR code (FEAT-06).
+     * Stored in settings.ab_testing.strategy: 'random' (default) or 'device'.
+     */
+    public function variantStrategy(): string
+    {
+        return $this->settings['ab_testing']['strategy'] ?? 'random';
+    }
+
     public function scans(): HasMany
     {
         return $this->hasMany(Scan::class);

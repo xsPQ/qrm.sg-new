@@ -1,0 +1,110 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Entitlement;
+
+use App\Exceptions\FeatureNotEntitledException;
+
+/**
+ * Central feature-gate for Pro/Business-only QR-code capabilities
+ * (Pflichtenheft §2.1–§2.4, §3.5.3; P2-T07).
+ *
+ * The single source of truth for *whether* a capability is available is the
+ * immutable {@see EntitlementSnapshot} attached to each QR code. At creation
+ * time callers pass the user's *current* plan snapshot; on edit callers pass
+ * the code's own snapshot (grandfathered — a downgrade never removes existing
+ * rights, §3.5.3).
+ *
+ * The gate owns only the *checks* and the *display data*. It contains no
+ * persistence, no mutation and no UI logic; wiring into Creator (P2-T04),
+ * Edit (P2-T03) and Resolver/Download happens in the service/controller layer.
+ *
+ * Plan rules (Pflichtenheft §2.1–§2.3):
+ *  - Free:  no custom alias, no password protection, qrm.sg branding, standard download.
+ *  - Pro:   custom alias, password protection, no branding, high-resolution download.
+ *  - Business: everything in Pro + custom domain + white-label.
+ */
+class EntitlementGate
+{
+    /**
+     * Reject a custom-alias write for a snapshot that does not allow it
+     * (Free, §2.1). Pro/Business snapshots pass through.
+     *
+     * @throws FeatureNotEntitledException
+     */
+    public function assertCustomAlias(EntitlementSnapshot $snapshot): void
+    {
+        if (! $snapshot->allowsCustomAlias()) {
+            throw FeatureNotEntitledException::forFeature(
+                FeatureNotEntitledException::FEATURE_CUSTOM_ALIAS,
+                $snapshot,
+            );
+        }
+    }
+
+    /**
+     * Reject a password-protection write for a snapshot that does not allow it
+     * (Free, §2.1). Pro/Business snapshots pass through.
+     *
+     * @throws FeatureNotEntitledException
+     */
+    public function assertPasswordProtection(EntitlementSnapshot $snapshot): void
+    {
+        if (! $snapshot->allowsPasswordProtection()) {
+            throw FeatureNotEntitledException::forFeature(
+                FeatureNotEntitledException::FEATURE_PASSWORD_PROTECTION,
+                $snapshot,
+            );
+        }
+    }
+
+    /**
+     * Whether the qrm.sg branding must be rendered for this code's download
+     * artifacts. Driven by the snapshot's branding field (§2.1/§2.2): the Free
+     * snapshot carries `qrm.sg`; Pro/Business carry `none`.
+     */
+    public function requiresBranding(EntitlementSnapshot $snapshot): bool
+    {
+        return $snapshot->branding() !== 'none';
+    }
+
+    /**
+     * Maximum download pixel size the code's plan permits (§2.1/§2.2).
+     *
+     * Free (`standard`) downloads are capped at a standard resolution;
+     * Pro/Business (`high_resolution`) may use the full high-resolution size.
+     */
+    public function maxDownloadSize(EntitlementSnapshot $snapshot): int
+    {
+        return $snapshot->downloadProfile() === 'high_resolution'
+            ? (int) config('qr.download.max_size_high_res', 2000)
+            : (int) config('qr.download.max_size_standard', 512);
+    }
+
+    /**
+     * Structured feature flags for the Creator/Edit UIs and the API, so the
+     * frontend can deterministically render locked fields and upgrade hints
+     * without re-implementing plan rules.
+     *
+     * @return array<string,mixed>
+     */
+    public function featureFlags(EntitlementSnapshot $snapshot): array
+    {
+        $locked = $snapshot->isFree();
+
+        return [
+            'plan' => $snapshot->plan(),
+            'can_use_custom_alias' => $snapshot->allowsCustomAlias(),
+            'can_use_password_protection' => $snapshot->allowsPasswordProtection(),
+            'branding' => $snapshot->branding(),
+            'requires_branding' => $this->requiresBranding($snapshot),
+            'download_profile' => $snapshot->downloadProfile(),
+            'analytics' => $snapshot->analytics(),
+            'is_free' => $locked,
+            'upgrade_hint' => $locked
+                ? 'Upgrade to Pro or Business to unlock custom aliases, password protection and branding removal.'
+                : null,
+        ];
+    }
+}

@@ -1,0 +1,9 @@
+# qrm.sg backup schedules (supercronic format).
+# supercron does not require root and reads this file directly.
+
+# Daily encrypted backup at 02:00 Europe/Berlin (container TZ set via env).
+0 2 * * * BACKUP_LOG_LEVEL="${BACKUP_LOG_LEVEL:-INFO}" /usr/local/bin/backup.sh >> /var/log/backup/daily.log 2>&1
+
+# Weekly automated restore test every Sunday 03:00.
+# Writes a PASS/FAIL result + log to /backups/restore-tests/.
+0 3 * * 0 /usr/local/bin/restore-test.sh >> /var/log/backup/restore-test.log 2>&1

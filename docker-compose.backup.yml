@@ -1,0 +1,54 @@
+# Backup service overlay for qrm.sg.
+#
+# Designed to extend the primary application compose file. Merge at runtime:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d backup
+#
+# It joins the application network and talks to the `postgres` service directly.
+# All secrets are injected via environment (see .env / secret store), never
+# baked into the image or committed.
+#
+# Required runtime secrets:
+#   BACKUP_DB_PASSWORD, BACKUP_ENCRYPTION_PASSPHRASE
+#   BACKUP_S3_ACCESS_KEY, BACKUP_S3_SECRET_KEY (when BACKUP_S3_URI is set)
+services:
+  backup:
+    build:
+      context: ./docker/backup
+      dockerfile: Dockerfile
+    image: qrm-backup:latest
+    container_name: qrm-backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # --- DB connection (must match the postgres service) ---
+      BACKUP_DB_HOST: postgres
+      BACKUP_DB_PORT: "5432"
+      BACKUP_DB_NAME: ${DB_DATABASE:-qrm}
+      BACKUP_DB_USER: ${DB_USERNAME:-qrm}
+      BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD:?BACKUP_DB_PASSWORD required}
+      BACKUP_DB_ADMIN_DB: postgres
+      # --- Encryption ---
+      BACKUP_ENCRYPTION_PASSPHRASE: ${BACKUP_ENCRYPTION_PASSPHRASE:?BACKUP_ENCRYPTION_PASSPHRASE required}
+      BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-30}"
+      # --- External copy (S3-compatible) ---
+      BACKUP_S3_URI: ${BACKUP_S3_URI:-}
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-us-east-1}
+      BACKUP_S3_ACCESS_KEY: ${BACKUP_S3_ACCESS_KEY:-}
+      BACKUP_S3_SECRET_KEY: ${BACKUP_S3_SECRET_KEY:-}
+      # --- Schedule ---
+      BACKUP_SCHEDULE: "${BACKUP_SCHEDULE:-0 2 * * *}"
+      BACKUP_RESTORE_TEST_SCHEDULE: "${BACKUP_RESTORE_TEST_SCHEDULE:-0 3 * * 0}"
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - backup-data:/backups
+      - backup-logs:/var/log/backup
+    networks:
+      - default
+
+volumes:
+  backup-data:
+  backup-logs:

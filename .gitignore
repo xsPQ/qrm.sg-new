@@ -3,6 +3,19 @@
 .env
 .env.backup
 .env.production
+
+# Backup artifacts (never commit dumps/manifests/logs)
+/backups/
+/docker/backup/backups/
+/docker/backup/logs/
+*.dump
+*.dump.gz
+*.dump.gz.gpg
+*.manifest.json
+/restore-tests/
+
+# Docker Build Quality Gate results/logs (OPS-2)
+/build-results/
 .phpactor.json
 .phpunit.result.cache
 /.codex
@@ -14,19 +27,18 @@
 /.zed
 /auth.json
 /node_modules
-/public/build
+# Frontend build output is committed (DEV-645): the local `php artisan serve`
+# path used by smoke tests has no guaranteed `npm run build` step, and a
+# gitignored public/build was repeatedly wiped on workspace resets, causing
+# ViteManifestNotFoundException 500s. Docker still rebuilds fresh assets in the
+# `frontend` stage (.dockerignore keeps host assets out of the image).
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
-/storage/logs
 /storage/*.key
 /storage/pail
 /vendor
-/coverage
-/docker-data
 _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
-storage/backups
-*.sql.gz

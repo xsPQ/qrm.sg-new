@@ -1,0 +1,69 @@
+<?php
+
+use App\Http\Controllers\Billing\BillingWebController;
+use App\Http\Controllers\Qr\QrCodeDetailController;
+use App\Http\Controllers\Qr\QrCodeEditController;
+use App\Http\Controllers\QrCodePublicResolverController;
+use App\Http\Controllers\QrScanController;
+use Illuminate\Support\Facades\Route;
+
+Route::view('/', 'landing')->name('landing');
+
+Route::view('dashboard', 'dashboard')
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
+
+Route::view('creator', 'creator')
+    ->middleware(['auth', 'verified'])
+    ->name('qr.creator');
+
+// QR-Code detail page (P2-T02). Owner/admin enforced via QrCodePolicy.
+// Named `qr-codes.detail` (not `.show`) to avoid colliding with the
+// apiResource show route in api.php, which already owns `qr-codes.show`.
+Route::get('qr-codes/{qrCode}', [QrCodeDetailController::class, 'show'])
+    ->middleware(['auth', 'verified'])
+    ->name('qr-codes.detail');
+
+// QR-Code edit page (P2-T03). Hosts the type-specific edit form. Owner/admin
+// enforced via QrCodePolicy (update) inside the controller; the Livewire
+// editor re-authorizes on mount and on every mutating action.
+Route::get('qr-codes/{qrCode}/edit', [QrCodeEditController::class, 'edit'])
+    ->middleware(['auth', 'verified'])
+    ->name('qr-codes.edit');
+
+Route::view('profile', 'profile')
+    ->middleware(['auth'])
+    ->name('profile');
+
+// Account page (Pflichtenheft §3.6.1, §3.4.1; P2-T05 / DEV-157): profile edit,
+// password change, email-verification status/trigger and tariff display.
+// Uses only `auth` (not `verified`) so the email-verification UI is reachable.
+Route::view('account', 'account')
+    ->middleware(['auth'])
+    ->name('account');
+
+// Browser-facing billing entry points for the Account page (P2-T05). Thin web
+// glue over the P2-T09 actions (DEV-161); only the Stripe webhook (DEV-162)
+// changes the account plan. CSRF-protected POST forms. Names are suffixed
+// `.web` to avoid colliding with the API routes in api.php.
+Route::middleware(['auth'])->group(function () {
+    Route::post('billing/checkout/{plan}', [BillingWebController::class, 'checkout'])
+        ->name('billing.web.checkout');
+    Route::post('billing/portal', [BillingWebController::class, 'portal'])
+        ->name('billing.web.portal');
+});
+
+require __DIR__.'/auth.php';
+
+// Public QR-code scan surface (Pflichtenheft §3.1.2 / §3.2). The POST endpoint
+// is the ONLY path that verifies a scan password (sets a signed grant cookie);
+// the GET resolver never accepts a query-string password (DEV-613 F1/F2).
+Route::get('/r/{code}', [QrScanController::class, 'resolve'])->name('qr.resolve');
+Route::post('/r/{code}/password', [QrScanController::class, 'password'])->name('qr.scan.password');
+
+// Catch-all public resolver: a short code or alias served from the app host
+// root. Registered LAST so every explicit route (auth, dashboard, billing,
+// Filament /admin, etc.) is matched ahead of it.
+Route::get('/{codeOrAlias}', [QrCodePublicResolverController::class, 'resolve'])
+    ->name('qr.public.resolve')
+    ->where('codeOrAlias', '[A-Za-z0-9][A-Za-z0-9\-]*');

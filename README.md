@@ -1,86 +1,58 @@
-# DevAgency Paperclip AI Template
+<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-DevAgency ist ein eigenständiges Betriebssystem für eine KI-native Softwareentwicklungsfirma auf Basis von Paperclip. Es bildet keine menschliche Abteilung nach. Rollen, Regeln, Budgets, Artefakte und Statusübergänge machen Agentenarbeit zerlegbar, routbar, prüfbar und kostensteuerbar.
+<p align="center">
+<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+</p>
 
-```text
-Idee -> Pflichtenheft -> Bedarfsanalyse -> Phasenplan -> Aufgabenplan
-     -> Task-Review -> Routing -> Umsetzung -> Tests -> QA
-     -> Security (risikobasiert) -> Release -> Healthcheck -> Auswertung
+## About Laravel
+
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+
+- [Simple, fast routing engine](https://laravel.com/docs/routing).
+- [Powerful dependency injection container](https://laravel.com/docs/container).
+- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
+- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
+- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
+- [Robust background job processing](https://laravel.com/docs/queues).
+- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+
+Laravel is accessible, powerful, and provides tools required for large, robust applications.
+
+## Learning Laravel
+
+Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+
+In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+
+You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+
+## Agentic Development
+
+Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+
+```bash
+composer require laravel/boost --dev
+
+php artisan boost:install
 ```
 
-Wenn ein Agent einen Task nicht zuverlässig abschließen kann, werden zuerst Task-Schnitt, Kontext, Verifikation und Routing geprüft. Modellstärke ersetzt keine fehlende Spezifikation.
+Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
 
-## Schnellstart
+## Contributing
 
-Für ein bereits fertiges Pflichtenheft siehe [How-To-Start.md](How-To-Start.md).
+Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
 
-1. Vorhaben in Paperclip als Project mit übergeordnetem Goal anlegen.
-2. Issue mit fachlichem `workflow_state: idea` und nativem Status `backlog` erstellen.
-3. Pflichtenheft mit [create-specification.md](prompts/sessions/create-specification.md) und [specification-template.md](docs/specification-template.md) erstellen und reviewen.
-4. Bedarfsanalyse, Phasenplan und atomare Tasks erzeugen.
-5. Tasks unabhängig reviewen und rollen-/ressourcenbasiert routen.
-6. Nur geroutete, unblockierte Tasks auschecken und implementieren.
-7. Tests, QA, risikobasierte Security-Prüfung, Release und Healthcheck ausführen.
-8. Kosten, Fehlschläge und Routing im Efficiency Audit auswerten.
+## Code of Conduct
 
-## Paperclip-Kompatibilität
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
-Paperclip verwendet nativ `backlog`, `todo`, `in_progress`, `in_review`, `blocked`, `done` und `cancelled`. DevAgency führt zusätzlich einen präzisen `workflow_state`, etwa `spec_draft`, `task_review`, `routed`, `qa_failed` oder `verified`. Die verbindliche Abbildung steht in [status-model.md](docs/company/status-model.md).
+## Security Vulnerabilities
 
-- Arbeit wird vor Beginn ausgecheckt; ein 409-Ownership-Konflikt wird nicht wiederholt.
-- Child Issues tragen `parentId` und `goalId`; Abhängigkeiten nutzen `blockedByIssueIds`.
-- Reviews nutzen `in_review` mit realem Reviewer-, Approval- oder Interaction-Pfad.
-- Jeder Heartbeat endet mit Status, Nachweis und nächstem Owner.
-- Rollen sind stabil; Adapter und Modelle sind austauschbare Ressourcen.
-- Budget-, Sicherheits- und Produktionsfreigaben werden nicht umgangen.
+If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
-Referenzen: [Paperclip-Dokumentation](https://docs.paperclip.ing/) und [offizielles Repository](https://github.com/paperclipai/paperclip).
+## License
 
-## Pflichtartefakte vor Development
-
-| Artefakt | Vorlage | Gate |
-|---|---|---|
-| Pflichtenheft | [specification-template.md](docs/specification-template.md) | Anforderungen, Nicht-Ziele, Sicherheit und Abnahme prüfbar |
-| Bedarfsanalyse | [needs-analysis-template.md](docs/planning/needs-analysis-template.md) | Stack, Rollen, Skills, Risiken und Budget bestimmt |
-| Phasenplan | [phase-template.md](docs/planning/phase-template.md) | Reihenfolge, Abhängigkeiten und Phasenabnahme klar |
-| Task | [task-template.md](docs/planning/task-template.md) | atomar, verifizierbar und routingfähig |
-| Task-Review | [task-review.md](prompts/sessions/task-review.md) | `pass`, `refine` oder `split` |
-| Routing | [routing-decision-template.md](docs/planning/routing-decision-template.md) | Rolle, Tier, Kostenklasse und Fallback begründet |
-
-Ohne abgeschlossenes Pflichtenheft und Bedarfsanalyse darf kein Development-Task `ready` werden.
-
-## Rollen und Ressourcen
-
-Eine Rolle definiert Zweck, Rechte, Inputs, Outputs und Qualitätsvertrag. Eine Ressource definiert Modellfähigkeit, Kosten, Verfügbarkeit und Kontextgrenzen. Rollen werden nie dauerhaft an Modellnamen gebunden.
-
-- [agent-roles.md](docs/company/agent-roles.md) und [prompts/agents/](prompts/agents/)
-- [resource-model.md](docs/company/resource-model.md)
-- [routing-model.md](docs/company/routing-model.md)
-- [model-registry-template.yaml](docs/company/model-registry-template.yaml)
-
-Jeder Development-Agent bestätigt:
-
-```text
-Loaded rules:
-- one task only
-- no scope expansion
-- tests required
-- no secrets
-- no destructive git commands
-- update docs if behaviour changes
-```
-
-Zusätzlich lädt er Task, Scope, Out-of-Scope, Verifikation, Abhängigkeiten, Budgetklasse und relevanten Kontext. Fehlt etwas, wird verfeinert, geteilt oder blockiert statt geraten.
-
-## Einstiegspunkte
-
-- [TEMPLATE.md](TEMPLATE.md): Manifest und Konsistenzregeln.
-- [AGENTS.md](AGENTS.md): verpflichtender Agenteneinstieg.
-- [docs/company/](docs/company/): Firma, Prozess, Ressourcen, Status und Metriken.
-- [docs/context/](docs/context/README.md): projektspezifischer Laufzeitkontext.
-- [docs/planning/](docs/planning/README.md): Planungsartefakte.
-- [prompts/](prompts/README.md): Regeln, Sessions, Rollen und Prüfaufträge.
-- [skills/](skills/README.md): Agent-Skills-kompatible Arbeitsverfahren.
-- [examples/](examples/README.md): konsistente Referenzkette.
-
-Vor produktivem Einsatz werden reale Build-, Test-, Security-, Docker-, Release- und Healthcheck-Kommandos eingetragen und ausgeführt.
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

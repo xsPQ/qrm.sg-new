@@ -6,6 +6,10 @@ on:
       - main
       - master
   pull_request:
+  # OPS-2 / DEV-640: recurring Docker-build quality gate (infra-level cadence).
+  schedule:
+    - cron: '0 1 * * *'   # daily 01:00 UTC
+  workflow_dispatch:       # manual trigger (e.g. after a milestone)
 
 jobs:
   quality:

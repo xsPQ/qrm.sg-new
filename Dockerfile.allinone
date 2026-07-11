@@ -1,0 +1,105 @@
+# =============================================================================
+# qrm.sg All-in-One Docker Image
+#
+# Ein einziger Container mit: Nginx + PHP-FPM + PostgreSQL + Redis + Worker + Scheduler
+# Simplon-Setup für Development/Staging — nicht für High-Volume Production.
+#
+# Build:
+#   docker build -f Dockerfile.allinone -t qrm-sg-allinone .
+# Run:
+#   docker run -p 8080:80 -e APP_KEY=base64:... qrm-sg-allinone
+# =============================================================================
+
+FROM php:8.3-fpm-alpine AS production
+
+# ── System packages ──────────────────────────────────────────────────────────
+RUN apk add --no-cache \
+    nginx \
+    postgresql17 \
+    redis \
+    supervisor \
+    bash \
+    fcgi \
+    curl \
+    curl-dev \
+    git \
+    unzip \
+    postgresql-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    oniguruma-dev \
+    libxml2-dev \
+    libzip-dev \
+    icu-dev \
+    autoconf \
+    build-base \
+    su-exec \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" \
+        pdo_pgsql pgsql gd mbstring dom xml zip bcmath opcache pcntl intl curl \
+    && pecl install redis \
+    && docker-php-ext-enable redis
+
+# ── Composer ─────────────────────────────────────────────────────────────────
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# ── Node (for Vite build) ────────────────────────────────────────────────────
+COPY --from=node:22-alpine /usr/local/bin/node /usr/local/bin/node
+COPY --from=node:22-alpine /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+
+# ── App source ───────────────────────────────────────────────────────────────
+WORKDIR /var/www
+COPY . .
+
+# ── Frontend build ───────────────────────────────────────────────────────────
+RUN npm ci --no-fund --no-audit && npm run build && npm cache clean --force
+
+# ── Composer dependencies ────────────────────────────────────────────────────
+RUN composer install --no-dev --no-interaction --no-progress --no-scripts --optimize-autoloader
+
+# ── Storage setup ────────────────────────────────────────────────────────────
+RUN mkdir -p bootstrap/cache \
+    storage/app/public storage/app/private \
+    storage/framework/cache/data storage/framework/sessions \
+    storage/framework/testing storage/framework/views storage/logs \
+    && chown -R www-data:www-data /var/www \
+    && chmod -R 775 storage bootstrap/cache
+
+# ── Nginx config ─────────────────────────────────────────────────────────────
+COPY docker/allinone/nginx.conf /etc/nginx/http.d/default.conf
+
+# ── PHP config ───────────────────────────────────────────────────────────────
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    && printf '%s\n' \
+        'opcache.enable=1' \
+        'opcache.memory_consumption=192' \
+        'opcache.interned_strings_buffer=16' \
+        'opcache.max_accelerated_files=20000' \
+        'opcache.validate_timestamps=0' \
+        'opcache.save_comments=1' \
+        'sys_temp_dir = "/tmp"' \
+        'upload_tmp_dir = "/tmp"' \
+        > /usr/local/etc/php/conf.d/opcache.ini
+
+# ── Supervisord config (runs everything) ─────────────────────────────────────
+COPY docker/allinone/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/allinone/run-postgres.sh /usr/local/bin/run-postgres.sh
+RUN chmod +x /usr/local/bin/run-postgres.sh
+
+# ── Entrypoint ───────────────────────────────────────────────────────────────
+COPY docker/allinone/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# ── Default .env (can be overridden) ─────────────────────────────────────────
+COPY docker/allinone/.env.docker /var/www/.env.docker
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -sf http://127.0.0.1/up || exit 1
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

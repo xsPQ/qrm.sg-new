@@ -195,7 +195,7 @@ class QrCreatorLivewireTest extends TestCase
             ->set('alias', 'campaign-2026')
             ->call('submit')
             ->assertHasNoErrors()
-            ->assertSet('created.url', 'http://localhost/campaign-2026')
+            ->assertSet('created.url', config('app.url') . '/campaign-2026')
             ->assertSet('created.alias', 'campaign-2026');
     }
 
@@ -294,7 +294,7 @@ class QrCreatorLivewireTest extends TestCase
 
         // With alias → preview encodes the public short-link.
         $component->set('alias', 'my-brand');
-        $this->assertSame('http://localhost/my-brand', $component->instance()->previewPayload());
+        $this->assertSame(config('app.url') . '/my-brand', $component->instance()->previewPayload());
     }
 
     public function test_preview_data_uri_is_generated_for_url_type(): void

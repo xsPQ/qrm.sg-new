@@ -16,7 +16,11 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use App\Mail\ResetPasswordMail;
 use App\Mail\VerifyEmailMail;
+use App\Models\Team;
+use App\Models\TeamMember;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 #[Fillable(['name', 'email', 'password', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
 #[Hidden(['password', 'remember_token'])]
@@ -52,6 +56,28 @@ class User extends Authenticatable implements MustVerifyEmail, FilamentUser
             'password' => 'hashed',
             'trial_ends_at' => 'datetime',
         ];
+    }
+
+    public function ownedTeams(): HasMany
+    {
+        return $this->hasMany(Team::class, 'owner_id');
+    }
+
+    public function teamMemberships(): HasMany
+    {
+        return $this->hasMany(TeamMember::class);
+    }
+
+    public function teams(): BelongsToMany
+    {
+        return $this->belongsToMany(Team::class, 'team_members')
+            ->withPivot(['role', 'invited_by_user_id'])
+            ->withTimestamps();
+    }
+
+    public function currentTeam(): ?Team
+    {
+        return $this->ownedTeams()->first() ?? $this->teams()->first();
     }
 
     /**

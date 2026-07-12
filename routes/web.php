@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Controllers\Account\QrCodeExportController;
 use App\Http\Controllers\Billing\BillingWebController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Qr\QrCodeDetailController;
 use App\Http\Controllers\Qr\QrCodeEditController;
 use App\Http\Controllers\QrCodePublicResolverController;
 use App\Http\Controllers\QrScanController;
+use App\Livewire\BulkQrImport;
 use App\Http\Middleware\ResolverRateLimit;
 use Illuminate\Support\Facades\Route;
 
@@ -13,6 +16,11 @@ Route::view('/', 'landing')->name('landing');
 // FEAT-08: Legal pages
 Route::view('/agb', 'legal.agb')->name('agb');
 Route::view('/terms', 'legal.terms')->name('terms');
+Route::view('/datenschutz', 'legal.datenschutz')->name('datenschutz');
+Route::view('/privacy', 'legal.privacy')->name('privacy');
+
+// Health check endpoint (§12.4 — monitoring)
+Route::get('/health/detailed', [HealthController::class, 'check'])->name('health.detailed');
 
 // Anonymous QR creation (FEAT-03)
 Route::get('/create', App\Livewire\AnonymousCreator::class)
@@ -56,11 +64,23 @@ Route::view('account', 'account')
     ->middleware(['auth'])
     ->name('account');
 
-// Browser-facing billing entry points for the Account page (P2-T05). Thin web
-// glue over the P2-T09 actions (DEV-161); only the Stripe webhook (DEV-162)
-// changes the account plan. CSRF-protected POST forms. Names are suffixed
-// `.web` to avoid colliding with the API routes in api.php.
 Route::middleware(['auth'])->group(function () {
+    Route::get('account/bulk-import', BulkQrImport::class)
+        ->name('account.bulk-import');
+
+    Route::get('account/qr-codes/export', [QrCodeExportController::class, 'export'])
+        ->name('account.qr-export');
+
+    Route::get('account/bulk-import/template', [QrCodeExportController::class, 'template'])
+        ->name('account.bulk-import.template');
+
+    Route::get('account/api-tokens', App\Livewire\ApiTokenManager::class)
+        ->name('account.api-tokens');
+
+    // Browser-facing billing entry points for the Account page (P2-T05). Thin web
+    // glue over the P2-T09 actions (DEV-161); only the Stripe webhook (DEV-162)
+    // changes the account plan. CSRF-protected POST forms. Names are suffixed
+    // `.web` to avoid colliding with the API routes in api.php.
     Route::post('billing/checkout/{plan}', [BillingWebController::class, 'checkout'])
         ->name('billing.web.checkout');
     Route::post('billing/portal', [BillingWebController::class, 'portal'])

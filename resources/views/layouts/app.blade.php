@@ -15,6 +15,9 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
+        <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-indigo-700 focus:shadow-lg">
+            {{ __('Skip to main content') }}
+        </a>
         <div class="min-h-screen bg-gray-100">
             <livewire:layout.navigation />
 
@@ -28,7 +31,7 @@
             @endif
 
             <!-- Page Content -->
-            <main>
+            <main id="main-content" tabindex="-1">
                 {{ $slot }}
             </main>
         </div>

@@ -83,3 +83,24 @@ Schedule::command('scans:purge-expired')
     ->dailyAt('02:00')
     ->name('scans:purge-expired')
     ->withoutOverlapping();
+
+/*
+ * Guest QR-code cleanup (FEAT-03, M5-T03b).
+ *
+ * Deletes anonymous guest QR codes whose 24-hour validity has expired.
+ * Runs hourly to keep the guest surface clean. Idempotent: only codes
+ * past their expires_at with no registered owner are removed.
+ */
+Schedule::command('guest-qr-codes:cleanup')
+    ->hourlyAt(10)
+    ->name('guest-qr-codes:cleanup')
+    ->withoutOverlapping();
+
+/*
+ * Daily encrypted database backup (Pflichtenheft §3.4, §12.4).
+ * Uses spatie/laravel-backup: dumps PostgreSQL + app files to local disk.
+ * Retention: 30 days (configured in config/backup.php → cleanup).
+ * Monitoring: health-check alerts if no backup in last 24h.
+ */
+Schedule::command('backup:clean')->dailyAt('01:00')->withoutOverlapping();
+Schedule::command('backup:run')->dailyAt('01:30')->withoutOverlapping();

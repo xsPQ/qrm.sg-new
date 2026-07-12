@@ -16,7 +16,12 @@
         <div class="prose prose-sm max-w-none space-y-6">
             <section>
                 <h2 class="text-xl font-semibold mb-2">1. Controller</h2>
-                <p>The controller for data processing on this website within the meaning of the GDPR is the operator of qrm.sg. Contact details will be published in the imprint before production launch.</p>
+                <p>The controller for data processing on this website within the meaning of the GDPR is:</p>
+                <p class="mt-2">
+                    <strong>wrkspc.xyz</strong> (Owner: Stephan)<br>
+                    qrm.sg is a brand of wrkspc.xyz<br>
+                    Email: <a href="mailto:info@qrm.sg" class="text-indigo-600 hover:underline">info@qrm.sg</a>
+                </p>
             </section>
 
             <section>

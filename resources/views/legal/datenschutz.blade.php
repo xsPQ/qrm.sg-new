@@ -16,7 +16,12 @@
         <div class="prose prose-sm max-w-none space-y-6">
             <section>
                 <h2 class="text-xl font-semibold mb-2">1. Verantwortlicher</h2>
-                <p>Verantwortlich für die Datenverarbeitung auf dieser Website im Sinne der Datenschutz-Grundverordnung (DSGVO) ist der Betreiber von qrm.sg. Die Kontaktdaten werden vor Produktivstart im Impressum veröffentlicht.</p>
+                <p>Verantwortlich für die Datenverarbeitung auf dieser Website im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:</p>
+                <p class="mt-2">
+                    <strong>wrkspc.xyz</strong> (Inhaber: Stephan)<br>
+                    qrm.sg ist eine Marke der wrkspc.xyz<br>
+                    E-Mail: <a href="mailto:info@qrm.sg" class="text-indigo-600 hover:underline">info@qrm.sg</a>
+                </p>
             </section>
 
             <section>
@@ -73,7 +78,7 @@
                     <li>Datenübertragbarkeit (Art. 20 DSGVO)</li>
                     <li>Widerspruch (Art. 21 DSGVO)</li>
                 </ul>
-                <p class="mt-3">Zur Ausübung Ihrer Rechte kontaktieren Sie uns bitte über die im Impressum angegebene Adresse.</p>
+                <p>Zur Ausübung Ihrer Rechte kontaktieren Sie uns bitte unter <a href="mailto:info@qrm.sg" class="text-indigo-600 hover:underline">info@qrm.sg</a>.</p>
             </section>
 
             <section>

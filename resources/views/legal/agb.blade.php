@@ -16,7 +16,7 @@
         <div class="prose prose-sm max-w-none space-y-6">
             <section>
                 <h2 class="text-xl font-semibold mb-2">§1 Leistungsbeschreibung</h2>
-                <p>qrm.sg ist ein Online-Dienst zur Erstellung, Verwaltung und Auswertung dynamischer QR-Codes. Die Inhalte hinter den QR-Codes können jederzeit geändert werden, ohne dass der QR-Code neu gedruckt werden muss. Der Dienst umfasst Analytics-Funktionen (Scan-Statistiken), verschiedene QR-Code-Typen (URL, WiFi, vCard, Event, etc.) und A/B-Testing-Funktionen.</p>
+                <p>qrm.sg ist ein Online-Dienst zur Erstellung, Verwaltung und Auswertung dynamischer QR-Codes. qrm.sg ist eine Marke der wrkspc.xyz (Inhaber: Stephan). Die Inhalte hinter den QR-Codes können jederzeit geändert werden, ohne dass der QR-Code neu gedruckt werden muss. Der Dienst umfasst Analytics-Funktionen (Scan-Statistiken), verschiedene QR-Code-Typen (URL, WiFi, vCard, Event, etc.) und A/B-Testing-Funktionen.</p>
             </section>
 
             <section>
@@ -85,7 +85,7 @@
 
             <section>
                 <h2 class="text-xl font-semibold mb-2">§9 Gerichtsstand</h2>
-                <p>Ausschließlicher Gerichtsstand für alle Streitigkeiten ist — soweit gesetzlich zulässig — der Sitz des Betreibers.</p>
+                <p>Ausschließlicher Gerichtsstand für alle Streitigkeiten ist — soweit gesetzlich zulässig — der Sitz des Betreibers (wrkspc.xyz). Kontakt: <a href="mailto:info@qrm.sg" class="text-indigo-600 hover:underline">info@qrm.sg</a>.</p>
             </section>
 
             <section>

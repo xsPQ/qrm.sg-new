@@ -18,6 +18,8 @@ Route::view('/agb', 'legal.agb')->name('agb');
 Route::view('/terms', 'legal.terms')->name('terms');
 Route::view('/datenschutz', 'legal.datenschutz')->name('datenschutz');
 Route::view('/privacy', 'legal.privacy')->name('privacy');
+Route::view('/impressum', 'legal.impressum')->name('impressum');
+Route::view('/imprint', 'legal.imprint')->name('imprint');
 
 // Health check endpoint (§12.4 — monitoring)
 Route::get('/health/detailed', [HealthController::class, 'check'])->name('health.detailed');

@@ -24,6 +24,24 @@ Statt QR-Codes mit statischen Inhalten zu erzeugen, die sich nie wieder ändern 
 - Ablaufdaten, Nutzungslimits und Passwortschutz
 - Kostenlos starten, bei Bedarf upgraden
 
+### 1.1 Das zentrale Verkaufsargument: Editierbarkeit nach dem Druck
+
+Jeder von qrm.sg erzeugte QR-Code kodiert **ausschließlich die Resolver-URL** (z. B. `https://qrm.sg/a7f3x2`). Die tatsächlichen Inhalte — WiFi-Zugangsdaten, Kontaktdaten, Event-Termine, Zahlungs-Links, Nachrichten — liegen **nicht im QR-Code selbst**, sondern werden zur Laufzeit vom Resolver aus der Datenbank geladen und auf einer qrm.sg-Seite gerendert oder als Weiterleitung ausgeliefert.
+
+**Das bedeutet:** Der QR-Code bleibt unverändert gültig, auch wenn sich der Inhalt komplett ändert. Das physische Medium (Flyer, Plakat, Visitenkarte, Aufkleber) muss nicht neu gedruckt werden.
+
+**Klassische Beispiele:**
+
+| Szenario | Problem ohne qrm.sg | Lösung mit qrm.sg |
+|---|---|---|
+| **Event-Uhrzeit falsch** | Flyer bereits gedruckt, Uhrzeit vertippt → Teilnehmer kommen zur falschen Zeit | Uhrzeit im Dashboard ändern, QR-Code bleibt gleich, alle Scanner sehen sofort den korrekten Termin |
+| **WiFi-Passwort geändert** | Aufkleber am Gäste-WLAN muss ausgetauscht werden | Neues Passwort im Dashboard eintragen, QR-Code auf dem Aufkleber bleibt gültig |
+| **Kontakt-Daten aktualisiert** | Alte Visitenkarten mit falscher Nummer | Kontaktdaten im Dashboard editieren, QR-Code auf der Visitenkarte bleibt gleich |
+| **Ziel-URL gewechselt** | Alte Werbeanzeige mit QR auf Landingpage A, Kampagne läuft aber auf Landingpage B | Ziel-URL im Dashboard ändern, gedruckter QR-Code bleibt aktiv |
+| **Kampagne beendet** | QR-Code führt ins Leere | Status auf 'expired' setzen oder Ziel-URL austauschen, ohne den QR-Code austauschen zu müssen |
+
+**Technische Garantie:** Die kanonische Nutzlastregel (§3.1.1) stellt sicher, dass jeder QR-Code von qrm.sg ausschließlich die Resolver-URL kodiert. Inhaltsänderungen sind jederzeit über das Dashboard möglich und treten sofort in Kraft. Der Resolver-Cache wird bei Inhaltsänderungen invalidiert.
+
 **Umsetzungsentscheidung ab 03.06.2026:** Die bestehende Deno/TypeScript-Fassung dient nur noch als fachliche Referenz für Verhalten, Datenmodell und bestehende Erkenntnisse. Die produktive Zielimplementierung wird als Laravel-Neuentwicklung spezifiziert.
 
 **Verbindlicher Gesamtumfang ab 04.07.2026:** Das Projekt wird vollständig über die Meilensteine M0 bis M4 umgesetzt. Die Meilensteine steuern Reihenfolge, Abnahme und risikoarme Auslieferung; sie kennzeichnen keine optionalen oder dauerhaft entfallenden Produktteile. Eine frühe nutzbare Version darf inkrementell bereitgestellt werden, das Projektziel bleibt jedoch der vollständige in diesem Pflichtenheft beschriebene Funktionsumfang einschließlich aller acht QR-Typen, Monetarisierung, Analytics, Administration und Business-Erweiterungen.

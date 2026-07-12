@@ -91,17 +91,22 @@
                 <label for="style-ec" class="block text-sm font-medium text-gray-700">{{ __('Error correction') }}</label>
                 <select id="style-ec"
                         wire:model.live="style.error_correction"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                        @if(! $canUsePremiumEc) onchange="if(['Q','H'].includes(this.value)){this.value='M';}" @endif>
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @if($isEditor ?? false) bg-gray-100 cursor-not-allowed @endif"
+                        @if($isEditor ?? false) disabled @endif
+                        @if(!($isEditor ?? false) && ! $canUsePremiumEc) onchange="if(['Q','H'].includes(this.value)){this.value='M';}" @endif
                     @foreach ($ecLevels as $value => $label)
                         <option value="{{ $value }}"
-                                @if(in_array($value, $premiumEcLevels) && ! $canUsePremiumEc) disabled @endif>
+                                @if(in_array($value, $premiumEcLevels) && ! $canUsePremiumEc) disabled @endif
                             {{ $label }}
                             @if(in_array($value, $premiumEcLevels) && ! $canUsePremiumEc) 🔒 @endif
                         </option>
                     @endforeach
                 </select>
-                @if(! $canUsePremiumEc)
+                @if($isEditor ?? false)
+                    <p class="mt-1 text-xs text-gray-400">
+                        🔒 {{ __('Error correction is fixed once the QR code is created and cannot be changed afterwards.') }}
+                    </p>
+                @elseif(! $canUsePremiumEc)
                     <p class="mt-1 text-xs text-gray-400">
                         🔒 <span class="font-semibold text-indigo-600">Pro</span>
                         — {{ __('Q and H levels are available on Pro and Business plans.') }}

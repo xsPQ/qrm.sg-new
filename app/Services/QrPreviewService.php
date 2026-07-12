@@ -34,7 +34,7 @@ class QrPreviewService
      */
     public function resolveUrl(?string $alias = null): string
     {
-        $base = rtrim((string) config('app.url'), '/');
+        $base = \App\Support\BaseUrlResolver::forRequest();
 
         return $alias
             ? $base . '/' . $alias

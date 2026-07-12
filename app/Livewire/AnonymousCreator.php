@@ -103,7 +103,7 @@ class AnonymousCreator extends Component
                 'expires_at' => now()->addMinutes(15),
             ]);
 
-            $host = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'localhost';
+            $host = \App\Support\BaseUrlResolver::host();
             $code = Str::upper(Str::random(6));
 
             QrCodeRoute::create([
@@ -113,7 +113,7 @@ class AnonymousCreator extends Component
             ]);
 
             $this->createdCode = $code;
-            $this->createdUrl = rtrim((string) config('app.url'), '/') . '/' . $code;
+            $this->createdUrl = \App\Support\BaseUrlResolver::scanUrl($code);
         });
     }
 

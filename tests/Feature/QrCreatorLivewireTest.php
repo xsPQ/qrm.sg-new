@@ -311,4 +311,51 @@ class QrCreatorLivewireTest extends TestCase
         $this->assertNotNull($dataUri);
         $this->assertStringStartsWith('data:image/png;base64,', $dataUri);
     }
+
+    // ---------------------------------------------------------------
+    // BUG-FIX-01: Password field on create
+    // ---------------------------------------------------------------
+
+    public function test_pro_user_sees_password_field_on_create(): void
+    {
+        $user = User::factory()->create();
+        $this->grantPro($user);
+
+        Livewire::actingAs($user)
+            ->test(QrCreator::class)
+            ->set('type', 'url')
+            ->set('showAdvanced', true)
+            ->assertSee(__('Password protection (optional)'));
+    }
+
+    public function test_free_user_sees_password_upgrade_hint_on_create(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(QrCreator::class)
+            ->set('type', 'url')
+            ->set('showAdvanced', true)
+            ->assertSee(__('Password protection is available on Pro and Business plans.'));
+    }
+
+    public function test_password_set_during_create_persists(): void
+    {
+        $user = User::factory()->create();
+        $this->grantPro($user);
+
+        Livewire::actingAs($user)
+            ->test(QrCreator::class)
+            ->set('type', 'url')
+            ->set('title', 'Protected')
+            ->set('content.url', 'https://example.com')
+            ->set('password', 'secret123')
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $qrCode = QrCode::where('title', 'Protected')->first();
+        $this->assertNotNull($qrCode);
+        $this->assertNotNull($qrCode->password_hash);
+        $this->assertTrue(password_verify('secret123', $qrCode->password_hash));
+    }
 }

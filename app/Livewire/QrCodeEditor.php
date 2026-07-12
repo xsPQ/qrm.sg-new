@@ -181,7 +181,7 @@ class QrCodeEditor extends Component
         }
 
         $routeService ??= app(QrCodeRouteService::class);
-        $host = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'localhost';
+        $host = \App\Support\BaseUrlResolver::host();
         $excludeId = $this->qrCode->route?->id;
         $minLength = $this->aliasMinLength();
 
@@ -216,15 +216,29 @@ class QrCodeEditor extends Component
             return;
         }
 
-        // Business premium-shortcode indicator (M5-T05): aliases ≤4 chars are
-        // flagged as premium shortcodes — allowed, but flagged for the UI.
-        if ($this->canUsePremiumAlias() && mb_strlen($value) <= 4) {
-            $this->aliasStatus = $routeService->isAliasAvailable($value, $host, $excludeId)
-                ? 'premium'
-                : 'taken';
-            $this->aliasMessage = $this->aliasStatus === 'premium'
-                ? __(':value is available as a premium shortcode.', ['value' => $value])
-                : __(':value is already taken.', ['value' => $value]);
+        // Premium alias logic (≤4 chars) — same as Creator but with excludeId
+        $isShort = mb_strlen($value) <= 4;
+
+        if ($isShort) {
+            $isOwned = \App\Models\PremiumAliasPurchase::isAliasOwnedBy($value, \Illuminate\Support\Facades\Auth::id());
+            $isPurchased = \App\Models\PremiumAliasPurchase::isAliasPurchased($value);
+            $isAvailable = $routeService->isAliasAvailable($value, $host, $excludeId);
+
+            if ($this->canUsePremiumAlias()) {
+                $this->aliasStatus = $isAvailable ? 'premium' : 'taken';
+                $this->aliasMessage = $isAvailable
+                    ? __(':value is available as a premium shortcode.', ['value' => $value])
+                    : __(':value is already taken.', ['value' => $value]);
+            } elseif ($isOwned) {
+                $this->aliasStatus = 'available';
+                $this->aliasMessage = __(':value is yours (premium alias).', ['value' => $value]);
+            } elseif ($isPurchased || ! $isAvailable) {
+                $this->aliasStatus = 'taken';
+                $this->aliasMessage = __(':value is already taken.', ['value' => $value]);
+            } else {
+                $this->aliasStatus = 'premium';
+                $this->aliasMessage = __(':value is a premium shortcode. Unlock for 1.00 €.', ['value' => $value]);
+            }
 
             return;
         }
@@ -248,9 +262,19 @@ class QrCodeEditor extends Component
     {
         $minLength = $this->aliasMinLength();
 
+        // Allow short aliases (≤4 chars) if purchased or Business
+        $aliasValue = trim((string) $this->alias);
+        if ($aliasValue !== '' && mb_strlen($aliasValue) <= 4) {
+            $allowShort = $this->canUsePremiumAlias()
+                || \App\Models\PremiumAliasPurchase::isAliasOwnedBy($aliasValue, \Illuminate\Support\Facades\Auth::id());
+            if ($allowShort) {
+                $minLength = 1;
+            }
+        }
+
         $rules = [
             'title' => ['required', 'string', 'max:255'],
-            'alias' => ['nullable', 'string', 'min:' . $minLength, 'max:' . $this->aliasMaxLength(), 'regex:/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/'],
+            'alias' => ['nullable', 'string', 'min:' . $minLength, 'max:' . $this->aliasMaxLength(), 'regex:/^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?$/'],
             'password' => ['nullable', 'string', 'min:4'],
             'maxScans' => ['nullable', 'integer', 'min:1'],
         ];
@@ -503,6 +527,12 @@ class QrCodeEditor extends Component
             'content' => $snapshot['content'] ?? $this->qrCode->content,
             'settings' => $snapshot['settings'] ?? $this->qrCode->settings,
         ];
+
+        // Restore status only when the snapshot actually contains it
+        // (older revisions may not have the field).
+        if (array_key_exists('status', $snapshot)) {
+            $payload['status'] = $snapshot['status'];
+        }
 
         $qrCodeService->update($this->qrCode, $payload);
 

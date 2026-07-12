@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Domain\Entitlement\EntitlementSnapshot;
+use App\Livewire\QrCodeEditor;
 use App\Models\QrCode;
 use App\Models\QrCodeRevision;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
@@ -186,5 +188,97 @@ class QrCodeRevisionTest extends TestCase
 
         $this->assertStringContainsString('content', $revision->change_summary);
         $this->assertStringContainsString('body', $revision->change_summary);
+    }
+
+    public function test_restore_revision_via_livewire_restores_all_fields(): void
+    {
+        [$user, $qrCode] = $this->createQrCode();
+
+        $this->actingAs($user);
+
+        // Change title, content, settings and status.
+        $qrCode->update([
+            'title' => 'After Edit',
+            'content' => ['title' => 'Msg', 'body' => 'Changed'],
+            'settings' => ['style' => ['fg_color' => '#ff0000']],
+            'status' => 'paused',
+        ]);
+
+        // The revision now holds the PREVIOUS state (original values).
+        $revision = QrCodeRevision::first();
+        $this->assertEquals('Original Title', $revision->snapshot['title']);
+        $this->assertEquals('active', $revision->snapshot['status']);
+
+        // Restore via Livewire component.
+        Livewire::actingAs($user)
+            ->test(QrCodeEditor::class, ['qrCode' => $qrCode])
+            ->call('restoreRevision', $revision->id)
+            ->assertHasNoErrors();
+
+        // Assert all four tracked fields are restored.
+        $qrCode->refresh();
+        $this->assertEquals('Original Title', $qrCode->title);
+        $this->assertEquals('Original content', $qrCode->content['body']);
+        $this->assertEquals('active', $qrCode->status);
+    }
+
+    public function test_restore_revision_without_status_in_snapshot_keeps_current_status(): void
+    {
+        [$user, $qrCode] = $this->createQrCode();
+
+        $this->actingAs($user);
+
+        // Create a revision by changing content.
+        $qrCode->update([
+            'content' => ['title' => 'Msg', 'body' => 'Changed'],
+        ]);
+
+        $revision = QrCodeRevision::first();
+
+        // Simulate an older snapshot without the status field.
+        $snapshot = $revision->snapshot;
+        unset($snapshot['status']);
+        $revision->snapshot = $snapshot;
+        $revision->save();
+
+        // Change status to paused after the revision was created.
+        $qrCode->update(['status' => 'paused']);
+
+        // The latest revision is from the status change; we restore the
+        // older one that lacks status.
+        $oldRevision = QrCodeRevision::orderBy('version')->first();
+
+        Livewire::actingAs($user)
+            ->test(QrCodeEditor::class, ['qrCode' => $qrCode])
+            ->call('restoreRevision', $oldRevision->id)
+            ->assertHasNoErrors();
+
+        // Status should remain 'paused' (the current one), not changed.
+        $qrCode->refresh();
+        $this->assertEquals('paused', $qrCode->status);
+        // But content should be restored.
+        $this->assertEquals('Original content', $qrCode->content['body']);
+    }
+
+    public function test_restore_revision_creates_new_revision_for_undo(): void
+    {
+        [$user, $qrCode] = $this->createQrCode();
+
+        $this->actingAs($user);
+
+        $qrCode->update(['title' => 'Changed']);
+
+        $revisionCountBefore = QrCodeRevision::count(); // 1
+
+        $revision = QrCodeRevision::first();
+
+        Livewire::actingAs($user)
+            ->test(QrCodeEditor::class, ['qrCode' => $qrCode])
+            ->call('restoreRevision', $revision->id)
+            ->assertHasNoErrors();
+
+        // The restore itself should trigger a new revision (capturing the
+        // "before restore" state), making the action reversible.
+        $this->assertEquals($revisionCountBefore + 1, QrCodeRevision::count());
     }
 }

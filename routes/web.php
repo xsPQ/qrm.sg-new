@@ -89,6 +89,14 @@ Route::middleware(['auth'])->group(function () {
         ->name('billing.web.checkout');
     Route::post('billing/portal', [BillingWebController::class, 'portal'])
         ->name('billing.web.portal');
+
+    // Premium alias one-time purchase (FEAT-10 §12.12)
+    Route::post('billing/premium-alias/checkout', [\App\Http\Controllers\Billing\PremiumAliasCheckoutController::class, 'checkout'])
+        ->name('billing.premium-alias.checkout');
+    Route::get('billing/premium-alias/{purchase}/success', [\App\Http\Controllers\Billing\PremiumAliasCheckoutController::class, 'success'])
+        ->name('billing.premium-alias.success');
+    Route::get('billing/premium-alias/{purchase}/cancel', [\App\Http\Controllers\Billing\PremiumAliasCheckoutController::class, 'cancel'])
+        ->name('billing.premium-alias.cancel');
 });
 
 require __DIR__.'/auth.php';
@@ -98,6 +106,12 @@ require __DIR__.'/auth.php';
 // the GET resolver never accepts a query-string password (DEV-613 F1/F2).
 Route::get('/r/{code}', [QrScanController::class, 'resolve'])->name('qr.resolve');
 Route::post('/r/{code}/password', [QrScanController::class, 'password'])->name('qr.scan.password');
+
+// WiFi connect helpers: iOS .mobileconfig profile + WIFI: URI data
+Route::get('/r/{code}/wifi.mobileconfig', [App\Http\Controllers\WifiConnectController::class, 'appleProfile'])
+    ->name('qr.wifi.apple');
+Route::get('/r/{code}/wifi-uri', [App\Http\Controllers\WifiConnectController::class, 'wifiUri'])
+    ->name('qr.wifi.uri');
 
 // Catch-all public resolver: a short code or alias served from the app host
 // root. Registered LAST so every explicit route (auth, dashboard, billing,

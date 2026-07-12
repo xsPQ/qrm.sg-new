@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Livewire\QrCodeEditor;
+use App\Livewire\QrCreator;
 use App\Models\QrCode;
 use App\Models\QrCodeRoute;
 use App\Models\User;
@@ -436,5 +437,30 @@ class QrCodeEditorLivewireTest extends TestCase
             ->assertSee('smoke-alias')
             ->assertSee(__('Save changes'))
             ->assertSee(__('Delete QR code'));
+    }
+
+    // ---------------------------------------------------------------
+    // BUG-FIX-03: ECC read-only in editor
+    // ---------------------------------------------------------------
+
+    public function test_ecc_dropdown_locked_hint_visible_in_editor(): void
+    {
+        $owner = User::factory()->create();
+        $qrCode = $this->makeQrCode($owner);
+
+        Livewire::actingAs($owner)
+            ->test(QrCodeEditor::class, ['qrCode' => $qrCode])
+            ->set('showStylePanel', true)
+            ->assertSee(__('Error correction is fixed once the QR code is created and cannot be changed afterwards.'));
+    }
+
+    public function test_ecc_dropdown_locked_hint_not_visible_in_creator(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(QrCreator::class)
+            ->set('showStylePanel', true)
+            ->assertDontSee(__('Error correction is fixed once the QR code is created and cannot be changed afterwards.'));
     }
 }

@@ -40,6 +40,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Premium Alias (One-Time Purchase)
+    |--------------------------------------------------------------------------
+    |
+    | Aliases with ≤4 characters are premium shortcodes. Any user (including
+    | Free) can buy one for a one-time fee. After purchase, the alias is
+    | permanently assigned to the user's account and can be used for any
+    | QR code.
+    |
+    */
+
+    'premium_alias' => [
+        'price_id' => env('STRIPE_PRICE_PREMIUM_ALIAS'),
+        'cost' => 1.00,            // EUR, one-time
+        'max_length' => 4,         // aliases with ≤4 chars are premium
+        'currency' => 'eur',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Subscription type
     |--------------------------------------------------------------------------
     |

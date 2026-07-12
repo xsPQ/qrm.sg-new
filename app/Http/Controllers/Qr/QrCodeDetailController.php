@@ -37,11 +37,10 @@ class QrCodeDetailController extends Controller
         $route = $qrCode->route;
         $code = $route?->code ?? (string) $qrCode->id;
 
-        // Build the exact short link the printed QR encodes (matches the
-        // download controller), so the preview reflects the real scan target.
-        $host = $route?->host
-            ?: (parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'localhost');
-        $shortLink = "https://{$host}/{$code}";
+        // Build the exact short link the printed QR encodes.
+        // Uses BaseUrlResolver so the URL reflects the actual request host
+        // (e.g. qrm.sg:8000, qr.firma.de) instead of the fixed APP_URL.
+        $shortLink = \App\Support\BaseUrlResolver::scanUrl($code);
 
         // Apply the code's stored visual style to the preview (FEAT-04).
         $style = $qrCode->settings['style'] ?? null;

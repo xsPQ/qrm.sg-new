@@ -142,7 +142,7 @@ class QrCreator extends Component
         }
 
         $routeService ??= app(QrCodeRouteService::class);
-        $host = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'localhost';
+        $host = \App\Support\BaseUrlResolver::host();
         $minLength = $this->aliasMinLength();
 
         // Reserved system paths are always checked first, regardless of length.
@@ -183,15 +183,35 @@ class QrCreator extends Component
             return;
         }
 
-        // Business premium-shortcode indicator (M5-T05): aliases ≤4 chars are
-        // flagged as premium shortcodes — allowed, but flagged for the UI.
-        if ($this->canUsePremiumAlias() && mb_strlen($value) <= 4) {
-            $this->aliasStatus = $routeService->isAliasAvailable($value, $host)
-                ? 'premium'
-                : 'taken';
-            $this->aliasMessage = $this->aliasStatus === 'premium'
-                ? __(':value is available as a premium shortcode.', ['value' => $value])
-                : __(':value is already taken.', ['value' => $value]);
+        // Premium alias logic (≤4 chars):
+        // - Business users: allowed (canUsePremiumAlias)
+        // - User who purchased this specific alias: allowed
+        // - Everyone else: show buy option
+        $isShort = mb_strlen($value) <= 4;
+
+        if ($isShort) {
+            $isOwned = \App\Models\PremiumAliasPurchase::isAliasOwnedBy($value, \Illuminate\Support\Facades\Auth::id());
+            $isPurchased = \App\Models\PremiumAliasPurchase::isAliasPurchased($value);
+            $isAvailable = $routeService->isAliasAvailable($value, $host);
+
+            if ($this->canUsePremiumAlias()) {
+                // Business user — premium aliases included
+                $this->aliasStatus = $isAvailable ? 'premium' : 'taken';
+                $this->aliasMessage = $isAvailable
+                    ? __(':value is available as a premium shortcode.', ['value' => $value])
+                    : __(':value is already taken.', ['value' => $value]);
+            } elseif ($isOwned) {
+                // User purchased this alias
+                $this->aliasStatus = 'available';
+                $this->aliasMessage = __(':value is yours (premium alias).', ['value' => $value]);
+            } elseif ($isPurchased || ! $isAvailable) {
+                $this->aliasStatus = 'taken';
+                $this->aliasMessage = __(':value is already taken.', ['value' => $value]);
+            } else {
+                // Available but premium — show buy option
+                $this->aliasStatus = 'premium';
+                $this->aliasMessage = __(':value is a premium shortcode. Unlock for 1.00 €.', ['value' => $value]);
+            }
 
             return;
         }
@@ -215,9 +235,21 @@ class QrCreator extends Component
     {
         $minLength = $this->aliasMinLength();
 
+        // Allow short aliases (≤4 chars) if the user purchased this alias
+        // or has Business plan. The live check already shows the right UI;
+        // here we relax the min-length rule for purchased/Business aliases.
+        $aliasValue = trim((string) $this->alias);
+        if ($aliasValue !== '' && mb_strlen($aliasValue) <= 4) {
+            $allowShort = $this->canUsePremiumAlias()
+                || \App\Models\PremiumAliasPurchase::isAliasOwnedBy($aliasValue, \Illuminate\Support\Facades\Auth::id());
+            if ($allowShort) {
+                $minLength = 1;
+            }
+        }
+
         $rules = [
             'title' => ['required', 'string', 'max:255'],
-            'alias' => ['nullable', 'string', 'min:' . $minLength, 'max:' . $this->aliasMaxLength(), 'regex:/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/'],
+            'alias' => ['nullable', 'string', 'min:' . $minLength, 'max:' . $this->aliasMaxLength(), 'regex:/^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?$/'],
             'password' => ['nullable', 'string', 'min:4'],
             'maxScans' => ['nullable', 'integer', 'min:1'],
         ];

@@ -1298,7 +1298,22 @@ Auf Basis der UX-Analyse wurden folgende Features definiert und teilweise umgese
 | Pro | Custom Alias 4–32 Zeichen | Im Abo inklusive |
 | Business/Premium | Premium-Alias 2–32 Zeichen | Zusätzliche Monetarisierung |
 
-Premium-Shortcodes (≤4 Zeichen) sind Business vorbehalten und als kostenpflichtiges Upgrade vorgesehen. Die Preismodellierung (einmalig/monatlich/lifetime) wird separat definiert.
+Premium-Shortcodes (≤4 Zeichen) sind als **einmaliger Kauf (1,00 €)** für alle Nutzer verfügbar — inklusive Free, Pro und Business. Business-Nutzer erhalten Premium-Aliase kostenlos im Abo.
+
+**Kauf-Flow:**
+1. Nutzer gibt einen Alias mit ≤4 Zeichen im Creator/Editor ein.
+2. UI zeigt: "Premium-Shortcode — für 1,00 € freischalten."
+3. Klick auf "Kaufen" → Stripe Checkout (einmalige Zahlung, 1,00 €).
+4. Nach Zahlung: Alias ist permanent für diesen Nutzer reserviert.
+5. Der Alias kann für beliebig viele QR-Codes genutzt werden (immer derselbe Alias-Wechsel).
+
+**Technische Umsetzung:**
+- Tabelle: `premium_alias_purchases` (user_id, alias, stripe_checkout_session_id, status, paid_at)
+- Eindeutige Reservierung: Ein Alias kann nur einmal gekauft werden (Unique-Constraint).
+- Stripe-Produkt: `STRIPE_PRICE_PREMIUM_ALIAS` (einmalige Zahlung, 1,00 €, EUR).
+- Webhook: Markiert Kauf als 'paid' bei erfolgreichem `checkout.session.completed`.
+- API: `POST /billing/premium-alias/checkout` { alias: "abc" } → Stripe Checkout URL.
+- Die Alias-Verfügbarkeitsprüfung in Creator/Editor/Service berücksichtigt gekaufte Aliase.
 
 **FEAT-04 Details (Visuelle Anpassung):**
 - Farben: Vorder- und Hintergrundfarbe wählbar (alle Pläne)
@@ -1679,6 +1694,39 @@ volumes:
 - SSL/TLS via nginx (Let's Encrypt oder externe Terminierung)
 
 ---
+
+### 12.11 Bugfix-Liste (Juli 2026)
+
+Die folgenden drei Bugs wurden bei manuellem Testing identifiziert und müssen vor dem Go-Live behoben werden. Jeder Bug ist atomar in einem eigenen Task dokumentiert.
+
+#### BUG-FIX-01: Passwort bereits bei der Erstellung festlegbar
+
+**Symptom:** Der Creator zeigt unter "Advanced settings" nur den Hinweis "Password protection is managed after creation" — es gibt kein Eingabefeld. Nutzer müssen das Passwort nachträglich über den Editor setzen, was unnötige Reibung erzeugt.
+
+**Ursache:** `QrCreator.php` enthält bereits die Property `$password`, die Validation-Regel (`nullable, string, min:4`) und die Payload-Übergabe an den Service. Die Blade-View (`qr-creator.blade.php`) rendern jedoch kein Input-Feld, sondern nur einen Platzhalter-Text.
+
+**Lösung:** Das Password-Input-Feld in den Advanced-Settings-Bereich des Creators einfügen (analog zum Editor). Der Backend-Code ist bereits vollständig funktionsfähig — es ist ein reiner UI-Fix.
+
+**Anforderung:** §3.1.2 listet `password` als optionalen Erstellungsparameter. Der Creator muss dieses Feld zur Verfügung stellen.
+
+#### BUG-FIX-02: Revision-Restore muss vollständig und getestet sein
+
+**Symptom:** Der "Restore"-Button in der Versionshistorie existiert, aber:
+1. Der einzige Test (`test_restore_via_service_brings_back_previous_content`) testet direkte `$qrCode->update()`-Aufrufe, nicht die Livewire-Methode `restoreRevision()`.
+2. `restoreRevision()` stellt `status` nicht wieder her, obwohl der Observer `status` in den Snapshot aufnimmt (TRACKABLE = `['title', 'content', 'settings', 'status']`).
+
+**Lösung:**
+- `restoreRevision()` so erweitern, dass `status` aus dem Snapshot wiederhergestellt wird (sofern im Snapshot vorhanden).
+- Feature-Test schreiben, der `restoreRevision()` als Livewire-Call aufruft und alle vier Felder (title, content, settings, status) nach der Wiederherstellung verifiziert.
+- Edge-Case: Snapshot ohne status-Feld (alte Revisionen) → Status bleibt unverändert.
+
+#### BUG-FIX-03: Fehlerkorrektur-Level im Editor read-only
+
+**Symptom:** Das visuelle Design-Panel (`qr-design-panel.blade.php`) ist shared zwischen Creator und Editor. Die Fehlerkorrektur (Error Correction Level: L/M/Q/H) ist über `wire:model.live="style.error_correction"` im Editor veränderbar.
+
+**Warum das ein Bug ist:** Die Fehlerkorrektur ist eine Eigenschaft des QR-Bildes selbst. Ein einmal generiertes und insbesondere gedrucktes QR-Bild hat ein festes ECC-Level. Eine nachträgliche Änderung im Editor ändert nur den Datenbankeintrag, nicht aber das bereits auslieferbare QR-Bild — der Nutzer bekommt fälschlicherweise den Eindruck, das gedruckte Bild zu verändern.
+
+**Lösung:** Das Error-Correction-Dropdown im Editor deaktivieren (`disabled`, visuell als "gesperrt" markiert mit Tooltip/Hinweis). Nur im Creator ist die Auswahl aktiv. Die Logik dafür wird im shared `qr-design-panel.blade.php` über eine Bedingung gesteuert (z. B. `$isEditor` Flag).
 
 ## 13. Glossar
 

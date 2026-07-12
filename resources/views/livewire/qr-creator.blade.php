@@ -16,7 +16,7 @@
             ? 'w-full justify-center opacity-50 cursor-not-allowed'
             : 'w-full justify-center';
 
-        $appBaseUrl = rtrim((string) config('app.url'), '/');
+        $appBaseUrl = base_url_for_request();
         $aliasHint = $this->aliasTierHint();
     $aliasPlan = $this->aliasPlan();
     $aliasIsBusiness = $aliasPlan === 'business';
@@ -233,9 +233,24 @@
                                             {{ __('Burn after first scan') }}
                                         </label>
                                     </div>
+                                    @php $canUsePasswordProtection = (bool) ($features['can_use_password_protection'] ?? true); @endphp
+                                    @if ($canUsePasswordProtection)
+                                        <div>
+                                            <x-input-label for="password" :value="__('Password protection (optional)')" />
+                                            <x-text-input id="password" type="password" wire:model="password" class="mt-1 block w-full" placeholder="{{ __('Leave blank for no password') }}" autocomplete="new-password" />
+                                            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+                                        </div>
+                                    @else
+                                        <div class="sm:col-span-2">
+                                            <p class="rounded-md bg-gray-50 p-3 text-xs text-gray-500">
+                                                🔒 <span class="font-semibold text-indigo-600">Pro</span>
+                                                — {{ __('Password protection is available on Pro and Business plans.') }}
+                                            </p>
+                                        </div>
+                                    @endif
                                     <div class="sm:col-span-2">
                                         <p class="rounded-md bg-gray-50 p-3 text-xs text-gray-500">
-                                            {{ __('Password protection is managed after creation (P2-T13). Expiry is set automatically by your plan.') }}
+                                            {{ __('Expiry is set automatically by your plan.') }}
                                         </p>
                                     </div>
                                 </div>
@@ -243,7 +258,7 @@
                         </div>
 
                         {{-- Visual Design panel (M5-T04) --}}
-                        @include('livewire.qr-design-panel')
+                        @include('livewire.qr-design-panel', ['isEditor' => false])
                     </section>
                 </div>
 

@@ -149,7 +149,12 @@ class QrCodeService
         $entitlement = $this->resolveEntitlement($user);
 
         if (! empty($data['alias'])) {
-            $this->gate->assertCustomAlias($entitlement);
+            // Premium alias purchased → bypass plan gate
+            $aliasValue = strtolower(trim((string) $data['alias']));
+            $isPremiumPurchased = \App\Models\PremiumAliasPurchase::isAliasOwnedBy($aliasValue, $user->id);
+            if (! $isPremiumPurchased) {
+                $this->gate->assertCustomAlias($entitlement);
+            }
         }
 
         if (! empty($data['password'])) {
@@ -198,7 +203,12 @@ class QrCodeService
         $snapshot = $qrCode->entitlementSnapshot();
 
         if (array_key_exists('alias', $data) && ! empty($data['alias'])) {
-            $this->gate->assertCustomAlias($snapshot);
+            // Premium alias purchased → bypass plan gate
+            $aliasValue = strtolower(trim((string) $data['alias']));
+            $isPremiumPurchased = \App\Models\PremiumAliasPurchase::isAliasOwnedBy($aliasValue, $qrCode->user_id);
+            if (! $isPremiumPurchased) {
+                $this->gate->assertCustomAlias($snapshot);
+            }
         }
 
         if (array_key_exists('password', $data) && ! empty($data['password'])) {

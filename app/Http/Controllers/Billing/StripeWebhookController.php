@@ -77,7 +77,30 @@ class StripeWebhookController extends CashierWebhookController
     {
         $this->planSync->fromUserActiveSubscription($payload['data']['object']['customer'] ?? '');
 
+        // Premium alias one-time purchase: mark as paid
+        $metadata = $payload['data']['object']['metadata'] ?? [];
+        if (($metadata['type'] ?? '') === 'premium_alias' && isset($metadata['purchase_id'])) {
+            $this->markPremiumAliasPaid((int) $metadata['purchase_id'], $payload['data']['object']);
+        }
+
         return $this->successMethod();
+    }
+
+    /**
+     * Mark a premium alias purchase as paid after successful Stripe Checkout.
+     */
+    private function markPremiumAliasPaid(int $purchaseId, array $session): void
+    {
+        $purchase = \App\Models\PremiumAliasPurchase::find($purchaseId);
+        if (! $purchase || $purchase->status === 'paid') {
+            return;
+        }
+
+        $purchase->update([
+            'status' => 'paid',
+            'paid_at' => now(),
+            'stripe_payment_intent_id' => $session['payment_intent'] ?? null,
+        ]);
     }
 
     /**

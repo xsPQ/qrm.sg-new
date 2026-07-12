@@ -4,7 +4,7 @@
     $fields = $this->fields();
     $typeLabel = QrCodeType::tryFrom($this->type)?->label() ?? ucfirst($this->type);
 
-    $appBaseUrl = rtrim((string) config('app.url'), '/');
+    $appBaseUrl = base_url_for_request();
     $aliasHint = $this->aliasTierHint();
     $aliasPlan = $this->aliasPlan();
     $aliasIsBusiness = $aliasPlan === 'business';
@@ -175,7 +175,7 @@
             </div>
 
             {{-- Design panel (M5-T04) --}}
-            @include('livewire.qr-design-panel')
+            @include('livewire.qr-design-panel', ['isEditor' => true])
 
             {{-- A/B Testing section (M5-T06) — only for url/redirect --}}
             @if (in_array($qrCode->type, ['url', 'redirect']))

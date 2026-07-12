@@ -994,6 +994,113 @@ Die API-Felder `code`, `alias` und `resolve_url` werden aus `qr_code_routes` abg
 
 ---
 
+## 8A. Meilenstein M5 — Produkt-Features v2 (UX-Analyse Juli 2026)
+
+Auf Basis der UX-Analyse vom 11.07.2026 werden folgende Features als Ergänzung zu M0–M4 spezifiziert. Jedes Feature ist als eigenständiger Task nach dem Task-Template zu definieren.
+
+### M5.1 — FEAT-01: QR-Code Naming & Dashboard-Anker
+
+Jeder QR-Code erhält einen prominenten, nutzerdefinierten Anzeigenamen (`title`), der im Dashboard, in der Detailansicht und im Editor die primäre Identifikation ist. Der Kurzcode und Alias treten in den Hintergrund.
+
+| Anforderung | Umsetzung |
+|---|---|
+| Dashboard-Spalte „Name" als erste Spalte | `title` wird primär, Code/Alias als Subtext |
+| Detail-Seite zeigt Namen als `<h1>` | Controller übergibt `title` an View |
+| Creator: Name-Feld verpflichtend, mit Default-Vorschlag | Livewire-Validierung `required` |
+
+**Status:** ✅ Umgesetzt.
+
+### M5.2 — FEAT-02: Analytics-Sichtbarkeit im Dashboard
+
+Die Scan-Anzahl im Dashboard ist ein klickbarer Link zur Analytics-Seite. Zusätzlich erhält jede Zeile ein Analytics-Icon.
+
+| Anforderung | Umsetzung |
+|---|---|
+| Scan-Zahl klickbar → `/qr-codes/{id}/analytics` | Blade: `<a>` um `scan_count` |
+| Analytics-Icon pro Zeile | SVG-Icon in Actions-Spalte |
+
+**Status:** ✅ Umgesetzt.
+
+### M5.3 — FEAT-03: Anonyme QR-Erstellung ohne Registrierung
+
+Besucher können ohne Registrierung einen URL-QR-Code erstellen. Ziel ist die Senkung der Einstiegshürde und Conversion in Registrierungen.
+
+| Anforderung | Umsetzung |
+|---|---|
+| Landing Page CTA „Try Now" | Route `/create`, AnonymousCreator Livewire |
+| Anonymer Nutzer erstellt 1 URL-QR-Code (24h gültig) | Gast-User, `expires_at = now+24h` |
+| Nach Erstellung: Registrierungs-Hinweis mit Benefits | Conversion-Funnel-View |
+| Bei Registrierung: Code ins Konto übernehmbar | TODO — Post-Registration-Hook |
+| Wasserzeichen / qrm.sg-Branding auf anon. Codes | TODO — noch nicht implementiert |
+| 24h-Cleanup-Job für abgelaufene Gast-Codes | TODO — noch nicht implementiert |
+
+**Status:** ✅ Grundfunktion umgesetzt. Wasserzeichen + Cleanup-Job fehlen.
+
+### M5.4 — FEAT-04: Visuelle QR-Anpassung
+
+QR-Codes können visuell angepasst werden: Farben, Dot-Stile, Gradient, Logo und Error-Correction-Level.
+
+| Anforderung | Umsetzung | Plan |
+|---|---|---|
+| Vordergrund-/Hintergrundfarbe | `QrStyleService` + Endroid Builder | Alle |
+| Dot-Stile (Square, Round, Extra-Round) | `RoundBlockSizeMode` | Alle |
+| Error-Correction L/M | Endroid Standard | Alle |
+| Error-Correction Q/H | Endroid `ErrorCorrectionLevel::H` | Pro+ |
+| Gradient (Von/Bis-Farbe + Winkel) | Midpoint-Color-Blending | Pro+ |
+| Logo-Upload (PNG/SVG, resize) | Storage + Builder `setLogoPath` | Pro+ |
+| Margin-Control (0–50px) | `setMargin` | Alle |
+| **Design-Tab im Creator/Editor (UI)** | **FEHLT NOCH** | — |
+
+**Status:** ✅ Backend + Service + Tests. ❌ **UI im Creator/Editor fehlt.**
+
+### M5.5 — FEAT-05: Alias-Tiers & Monetarisierung
+
+Custom Aliase werden nach Plan gestaffelt. Premium-Shortcodes (≤4 Zeichen) sind monetarisierbar.
+
+| Tier | Alias-Regeln | Verfügbarkeit |
+|---|---|---|
+| Free | Zufälliger 6-Zeichen-Code; Custom Alias 8–32 Zeichen | Kostenlos |
+| Pro | Custom Alias 4–32 Zeichen | Im Abo |
+| Business | Premium-Alias 2–32 Zeichen | Zusätzliche Monetarisierung |
+
+| Anforderung | Umsetzung |
+|---|---|
+| Backend: Mindestlängen je Plan | ✅ `EntitlementGate::featureFlags()` |
+| Creator: Alias-Feld validiert nach Plan | ❌ **FEHLT** |
+| Premium-Shortcode-Kauf-Flow (Stripe) | ❌ **FEHLT** |
+| Reserved-Path-Schutz für 1–2 Zeichen | ❌ **FEHLT** |
+
+**Status:** ✅ Backend. ❌ **UI-Validierung + Kauf-Flow fehlen.**
+
+### M5.6 — FEAT-06: A/B Testing
+
+Ein QR-Code kann mehrere Ziel-URLs haben (Varianten), die nach Strategie ausgespielt werden.
+
+| Anforderung | Umsetzung |
+|---|---|
+| Migration `qr_code_variants` Tabelle | ✅ |
+| VariantSelector (gewichtet, geräteabhängig) | ✅ |
+| Resolver wählt Variante, tracked scan_count pro Variante | ✅ |
+| Scan-Datensatz enthält `qr_code_variant_id` | ✅ |
+| Entitlement-Gate: Pro+ only | ✅ |
+| **Editor-UI zum Anlegen von Varianten** | ❌ **FEHLT** |
+| **Analytics: Pro-Variante Metriken** | ⚠️ Teilweise |
+
+**Status:** ✅ Backend + Tests. ❌ **Editor-UI fehlt.**
+
+### M5 Abnahmekriterien
+
+- [ ] FEAT-01: Dashboard zeigt Namen primär; Detail-Seite nutzt Namen als Titel
+- [ ] FEAT-02: Scan-Zahl ist klickbar und führt zur Analytics-Seite
+- [ ] FEAT-03: Anonymer Nutzer kann ohne Login QR erstellen; Conversion-Hinweis sichtbar
+- [ ] FEAT-04: Design-Tab im Creator mit Farbe, Dot-Pattern, Logo (Pro+), Gradient (Pro+)
+- [ ] FEAT-05: Creator zeigt Alias-Optionen abhängig vom Tier; Premium-Shortcode-Kauf möglich
+- [ ] FEAT-06: Editor kann Varianten anlegen; Analytics zeigt pro-Variante Metriken
+- [ ] Wasserzeichen auf anonymen QR-Codes sichtbar
+- [ ] 24h-Cleanup-Job für Gast-Codes läuft idempotent
+
+---
+
 ## 9. Abnahmekriterien
 
 ### 9.1 M0 — Grundlagen-Skelett mit Laravel

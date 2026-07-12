@@ -5,7 +5,9 @@
     $typeLabel = QrCodeType::tryFrom($this->type)?->label() ?? ucfirst($this->type);
 
     $appBaseUrl = rtrim((string) config('app.url'), '/');
-    $aliasHint = __('4–32 chars, letters, numbers and hyphens. Reserved system paths are blocked.');
+    $aliasHint = $this->aliasTierHint();
+    $aliasPlan = $this->aliasPlan();
+    $aliasIsBusiness = $aliasPlan === 'business';
 
     $aliasOk = $aliasStatus === 'available';
     $aliasTextClass = $aliasStatus === 'available' ? 'text-green-600' : 'text-red-600';
@@ -112,7 +114,7 @@
                     </span>
                     <input id="alias" type="text"
                            wire:model.live.debounce.500ms="alias"
-                           minlength="4" maxlength="32"
+                           minlength="{{ $this->aliasMinLength() }}" maxlength="{{ $this->aliasMaxLength() }}"
                            pattern="[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?"
                            placeholder="{{ __('my-link') }}"
                            class="block w-full rounded-r-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -127,6 +129,12 @@
                 @endif
                 <x-input-error :messages="$errors->get('alias')" class="mt-2" />
                 <p class="mt-1 text-xs text-gray-400">{{ $aliasHint }}</p>
+                @if($aliasIsBusiness)
+                    <div class="mt-2 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
+                        <span>Premium Shortcode</span>
+                        <span>≤4 chars</span>
+                    </div>
+                @endif
             </div>
 
             <div>
@@ -165,6 +173,97 @@
                     </div>
                 @endif
             </div>
+
+            {{-- Design panel (M5-T04) --}}
+            @include('livewire.qr-design-panel')
+
+            {{-- A/B Testing section (M5-T06) — only for url/redirect --}}
+            @if (in_array($qrCode->type, ['url', 'redirect']))
+                <div class="mt-6 border-t border-gray-100 pt-6">
+                    @php $abToggleIcon = ($showAbPanel ?? false) ? 'rotate-90' : ''; @endphp
+                    <button type="button" wire:click="toggleAbPanel" class="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                        <svg class="h-4 w-4 transition {{ $abToggleIcon }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        {{ __('A/B Testing') }}
+                        @if(! $this->canUseAbTesting)
+                            <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">Pro</span>
+                        @endif
+                    </button>
+
+                    @if($showAbPanel ?? false)
+                        @if($this->canUseAbTesting)
+                            <div class="mt-4 space-y-4">
+                                @if(!empty($abVariants))
+                                    <table class="w-full text-sm">
+                                        <thead>
+                                            <tr class="border-b border-gray-200">
+                                                <th class="text-left py-2 px-3 text-gray-500 font-medium">{{ __('Label') }}</th>
+                                                <th class="text-left py-2 px-3 text-gray-500 font-medium">{{ __('URL') }}</th>
+                                                <th class="text-left py-2 px-3 text-gray-500 font-medium">{{ __('Weight') }}</th>
+                                                <th class="text-left py-2 px-3 text-gray-500 font-medium">{{ __('Device') }}</th>
+                                                <th class="text-left py-2 px-3 text-gray-500 font-medium">{{ __('Scans') }}</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($abVariants as $i => $variant)
+                                                <tr class="border-b border-gray-100">
+                                                    <td class="py-2 px-3 font-medium">{{ $variant['label'] ?? chr(65 + $i) }}</td>
+                                                    <td class="py-2 px-3 text-gray-600 truncate max-w-xs">{{ $variant['url'] ?? '' }}</td>
+                                                    <td class="py-2 px-3 text-gray-600">{{ $variant['weight'] ?? 1 }}</td>
+                                                    <td class="py-2 px-3 text-gray-600">{{ $variant['device_target'] ?? '—' }}</td>
+                                                    <td class="py-2 px-3 text-gray-600">{{ $variant['scan_count'] ?? 0 }}</td>
+                                                    <td class="py-2 px-3 text-right">
+                                                        <button type="button" wire:click="removeVariant({{ $i }})" class="text-red-600 hover:text-red-500 text-xs">{{ __('Remove') }}</button>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                @endif
+
+                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600">{{ __('Label') }}</label>
+                                        <input type="text" wire:model="newVariantLabel" placeholder="A" maxlength="10" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-xs font-medium text-gray-600">{{ __('URL') }}</label>
+                                        <input type="url" wire:model="newVariantUrl" placeholder="https://..." class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600">{{ __('Device') }}</label>
+                                        <select wire:model="newVariantDeviceTarget" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            <option value="">{{ __('Any') }}</option>
+                                            <option value="mobile">{{ __('Mobile') }}</option>
+                                            <option value="desktop">{{ __('Desktop') }}</option>
+                                            <option value="tablet">{{ __('Tablet') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button type="button" wire:click="addVariant" class="text-sm text-indigo-600 hover:text-indigo-500 font-medium">{{ __('+ Add variant') }}</button>
+
+                                <div class="flex items-center gap-3 pt-2">
+                                    <button type="button" wire:click="saveVariants" class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
+                                        <span wire:loading.remove wire:target="saveVariants">{{ __('Save variants') }}</span>
+                                        <span wire:loading wire:target="saveVariants">{{ __('Saving…') }}</span>
+                                    </button>
+                                    @if(!empty($abVariants))
+                                        <button type="button" wire:click="clearAllVariants" class="text-sm text-red-600 hover:text-red-500">{{ __('Clear all') }}</button>
+                                    @endif
+                                </div>
+                                @if($abSuccessMessage)
+                                    <p class="text-sm text-green-600">{{ $abSuccessMessage }}</p>
+                                @endif
+                            </div>
+                        @else
+                            <p class="mt-2 text-xs text-gray-400">
+                                {{ __('A/B testing lets you redirect to different URLs and track which performs better.') }}
+                                <a href="{{ route('account') }}" class="text-indigo-600 underline hover:text-indigo-500">{{ __('Upgrade to Pro') }}</a>
+                            </p>
+                        @endif
+                    @endif
+                </div>
+            @endif
 
             <div class="flex items-center justify-end gap-3 border-t border-gray-100 pt-6">
                 <a href="{{ route('dashboard') }}" wire:navigate

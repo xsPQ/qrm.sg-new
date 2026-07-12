@@ -1,13 +1,12 @@
 @php
     // Shared visual-design panel (M5-T04 / FEAT-04).
-    // Included by both QrCreator and QrCodeEditor. Both components expose:
-    //   $style, $showStylePanel, $logoUpload
-    //   computed: canUseGradient, canUseLogo, canUsePremiumEc
-    // and the saveLogo()/removeLogo() actions.
+    // Included by both QrCreator and QrCodeEditor.
+    // Read gating from the public $features array because @include does not
+    // reliably expose Livewire computed properties.
 
-    $canUseGradient = $this->canUseGradient;
-    $canUseLogo = $this->canUseLogo;
-    $canUsePremiumEc = $this->canUsePremiumEc;
+    $canUseGradient = (bool) ($features['can_use_gradient'] ?? false);
+    $canUseLogo = (bool) ($features['can_use_logo'] ?? false);
+    $canUsePremiumEc = (bool) ($features['can_use_premium_ec'] ?? false);
 
     $dotStyles = [
         'square' => __('Square'),

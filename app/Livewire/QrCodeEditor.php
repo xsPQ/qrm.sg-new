@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Domain\Entitlement\EntitlementGate;
+use App\Domain\Entitlement\EntitlementSnapshot;
 use App\Enums\QrCodeType;
 use App\Exceptions\FeatureNotEntitledException;
 use App\Exceptions\SlugCollisionException;
@@ -13,6 +14,7 @@ use App\Models\QrCode;
 use App\Models\QrCodeVariant;
 use App\Services\QrCodeRouteService;
 use App\Services\QrCodeService;
+use App\Services\QrStyleService;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -107,6 +109,13 @@ class QrCodeEditor extends Component
     public ?string $newVariantDeviceTarget = null;
 
     public ?string $abSuccessMessage = null;
+
+    public bool $showAbPanel = true;
+
+    public function toggleAbPanel(): void
+    {
+        $this->showAbPanel = ! $this->showAbPanel;
+    }
 
     public function mount(QrCode $qrCode): void
     {
@@ -260,7 +269,10 @@ class QrCodeEditor extends Component
             'content' => $this->cleanContent($validated['content']),
             'burn' => $validated['burn'] ?? $this->burn,
             'max_scans' => $validated['maxScans'] ?? null,
-            'settings' => ['style' => $this->cleanStyle($this->style)],
+            'settings' => ['style' => app(QrStyleService::class)->resolveStyle(
+                $this->cleanStyle($this->style),
+                EntitlementSnapshot::forPlan($this->features['plan'] ?? 'free'),
+            )],
             // Always send the alias key so the service can set, change or
             // clear it under the shared namespace (409-equivalent on collision).
             'alias' => ! empty($validated['alias']) ? $validated['alias'] : null,

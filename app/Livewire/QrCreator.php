@@ -21,6 +21,7 @@ use App\Exceptions\SlugCollisionException;
 use App\Services\QrCodeRouteService;
 use App\Services\QrCodeService;
 use App\Services\QrPreviewService;
+use App\Services\QrStyleService;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -255,7 +256,10 @@ class QrCreator extends Component
             'content' => $this->cleanContent($validated['content']),
             'burn' => $validated['burn'] ?? false,
             'max_scans' => $validated['maxScans'] ?? null,
-            'settings' => ['style' => $this->cleanStyle($this->style)],
+            'settings' => ['style' => app(QrStyleService::class)->resolveStyle(
+                $this->cleanStyle($this->style),
+                EntitlementSnapshot::forPlan($this->features['plan'] ?? 'free'),
+            )],
         ];
 
         if (!empty($validated['alias'])) {

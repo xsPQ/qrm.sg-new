@@ -17,7 +17,9 @@
             : 'w-full justify-center';
 
         $appBaseUrl = rtrim((string) config('app.url'), '/');
-        $aliasHint = __('4–32 chars, letters, numbers and hyphens. Reserved system paths are blocked.');
+        $aliasHint = $this->aliasTierHint();
+    $aliasPlan = $this->aliasPlan();
+    $aliasIsBusiness = $aliasPlan === 'business';
     @endphp
 
     <div class="py-12">
@@ -173,15 +175,15 @@
                             @endforeach
                         </div>
 
-                        <div class="mt-6 border-t border-gray-100 pt-6">
-                            <x-input-label for="alias" :value="__('Custom alias (optional)')" />
-                            <div class="mt-1 flex items-stretch">
-                                <span class="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-sm text-gray-500">
-                                    {{ $appBaseUrl }}/
-                                </span>
-                                <input id="alias" type="text"
+            <div class="mt-6 border-t border-gray-100 pt-6">
+                <x-input-label for="alias" :value="__('Custom alias (optional)')" />
+                <div class="mt-1 flex items-stretch">
+                    <span class="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-sm text-gray-500">
+                        {{ $appBaseUrl }}/
+                    </span>
+                    <input id="alias" type="text"
                                        wire:model.live.debounce.500ms="alias"
-                                       minlength="4" maxlength="32"
+                                       minlength="{{ $this->aliasMinLength() }}" maxlength="{{ $this->aliasMaxLength() }}"
                                        pattern="[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?"
                                        placeholder="{{ __('my-link') }}"
                                        class="block w-full rounded-r-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -203,6 +205,12 @@
                             @endif
                             <x-input-error :messages="$errors->get('alias')" class="mt-2" />
                             <p class="mt-1 text-xs text-gray-400">{{ $aliasHint }}</p>
+                            @if($aliasIsBusiness)
+                                <div class="mt-2 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
+                                    <span>Premium Shortcode</span>
+                                    <span>≤4 chars</span>
+                                </div>
+                            @endif
                         </div>
 
                         <div class="mt-6">

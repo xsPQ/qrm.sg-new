@@ -1,12 +1,13 @@
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Analytics') }} — {{ $qrCode->title }}
-            </h2>
-            <a href="{{ route('qr-codes.detail', $qrCode) }}" class="text-sm text-blue-600 hover:underline">{{ __('Back to QR Code') }}</a>
-        </div>
-    </x-slot>
+<x-slot name="header">
+    <div class="flex items-center justify-between">
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            {{ __('Analytics') }} — {{ $qrCode->title }}
+        </h2>
+        <a href="{{ route('qr-codes.detail', $qrCode) }}" class="text-sm text-blue-600 hover:underline">{{ __('Back to QR Code') }}</a>
+    </div>
+</x-slot>
+
+<div>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -177,4 +178,4 @@
         })();
     </script>
     @endif
-</x-app-layout>
+</div>

@@ -146,17 +146,19 @@ class AccountPageTest extends TestCase
             ->assertSessionHas('billing_error');
     }
 
-    public function test_billing_checkout_handles_unconfigured_stripe_gracefully(): void
+    public function test_billing_checkout_creates_stripe_session_when_configured(): void
     {
+        // When Stripe keys are configured (as they now are in .env), a
+        // checkout attempt should redirect to Stripe's checkout URL, not
+        // bounce back with an error.
         $user = User::factory()->create();
 
         $response = $this->from('/account')
             ->actingAs($user)
             ->post('/billing/checkout/pro');
 
-        $response
-            ->assertRedirect('/account')
-            ->assertSessionHas('billing_error');
+        // Stripe returns a 302 to checkout.stripe.com
+        $this->assertNotSame('/account', $response->headers->get('Location'));
     }
 
     public function test_billing_portal_handles_missing_customer_gracefully(): void

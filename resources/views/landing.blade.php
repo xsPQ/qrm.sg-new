@@ -40,16 +40,23 @@
         }
         .nav-links a:hover { color: var(--qr-primary); }
         .btn-primary {
-            background: var(--qr-primary); color: white; padding: 0.6rem 1.5rem;
+            background: var(--qr-primary); color: white !important; padding: 0.6rem 1.5rem;
             border-radius: 0.5rem; font-weight: 600; transition: background 0.2s;
+            display: inline-block;
         }
-        .btn-primary:hover { background: var(--qr-primary-dark); color: white; }
+        .btn-primary:hover { background: var(--qr-primary-dark); color: white !important; }
         .btn-outline {
             border: 2px solid var(--qr-primary); color: var(--qr-primary);
             padding: 0.5rem 1.5rem; border-radius: 0.5rem; font-weight: 600;
             text-decoration: none; transition: all 0.2s;
+            display: inline-block;
         }
         .btn-outline:hover { background: var(--qr-primary); color: white; }
+        .btn-login {
+            color: var(--qr-primary); font-weight: 600; padding: 0.5rem 1.25rem;
+            border-radius: 0.5rem; text-decoration: none; transition: background 0.2s;
+        }
+        .btn-login:hover { background: #eef2ff; }
         /* Hero */
         .hero {
             text-align: center; padding: 5rem 2rem 4rem;
@@ -182,6 +189,7 @@
             <a href="#types">QR-Typen</a>
             <a href="#pricing">Preise</a>
             <a href="{{ route('qr.create-anonymous') }}">Try Now</a>
+            <a href="{{ route('login') }}" class="btn-login">Login</a>
             <a href="{{ route('register') }}" class="btn-primary">Sign Up Free</a>
         </div>
     </nav>
@@ -302,6 +310,9 @@
                 <a href="{{ route('register') }}">Sign Up</a>
                 <a href="#features">Funktionen</a>
                 <a href="#pricing">Preise</a>
+                <a href="{{ route('impressum') }}">Impressum</a>
+                <a href="{{ route('datenschutz') }}">Datenschutz</a>
+                <a href="{{ route('agb') }}">AGB</a>
             </div>
         </div>
         <div style="text-align:center; padding-top:2rem; margin-top:2rem; border-top: 1px solid #1e293b;">

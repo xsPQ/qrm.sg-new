@@ -19,7 +19,7 @@ class QrCodePolicyTest extends TestCase
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
 
-        $admin = User::factory()->create();
+        $admin = User::factory()->create(['plan' => 'business']);
         $admin->assignRole('admin');
 
         return $admin;
@@ -27,7 +27,7 @@ class QrCodePolicyTest extends TestCase
 
     public function test_owner_can_view_own_qr_code(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->create(['plan' => 'business']);
         $qrCode = QrCode::create([
             'user_id' => $owner->id,
             'title' => 'Mine',
@@ -44,7 +44,7 @@ class QrCodePolicyTest extends TestCase
 
     public function test_owner_can_update_own_qr_code(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->create(['plan' => 'business']);
         $qrCode = QrCode::create([
             'user_id' => $owner->id,
             'title' => 'Mine',
@@ -61,7 +61,7 @@ class QrCodePolicyTest extends TestCase
 
     public function test_owner_can_delete_own_qr_code(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->create(['plan' => 'business']);
         $qrCode = QrCode::create([
             'user_id' => $owner->id,
             'title' => 'Mine',
@@ -77,8 +77,8 @@ class QrCodePolicyTest extends TestCase
 
     public function test_non_owner_cannot_view_others_qr_code_and_gets_403(): void
     {
-        $owner = User::factory()->create();
-        $intruder = User::factory()->create();
+        $owner = User::factory()->create(['plan' => 'business']);
+        $intruder = User::factory()->create(['plan' => 'business']);
         $qrCode = QrCode::create([
             'user_id' => $owner->id,
             'title' => 'Private',
@@ -93,8 +93,8 @@ class QrCodePolicyTest extends TestCase
 
     public function test_non_owner_cannot_update_others_qr_code_and_gets_403(): void
     {
-        $owner = User::factory()->create();
-        $intruder = User::factory()->create();
+        $owner = User::factory()->create(['plan' => 'business']);
+        $intruder = User::factory()->create(['plan' => 'business']);
         $qrCode = QrCode::create([
             'user_id' => $owner->id,
             'title' => 'Private',
@@ -112,8 +112,8 @@ class QrCodePolicyTest extends TestCase
 
     public function test_non_owner_cannot_delete_others_qr_code_and_gets_403(): void
     {
-        $owner = User::factory()->create();
-        $intruder = User::factory()->create();
+        $owner = User::factory()->create(['plan' => 'business']);
+        $intruder = User::factory()->create(['plan' => 'business']);
         $qrCode = QrCode::create([
             'user_id' => $owner->id,
             'title' => 'Private',
@@ -130,7 +130,7 @@ class QrCodePolicyTest extends TestCase
 
     public function test_admin_can_view_any_qr_code(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->create(['plan' => 'business']);
         $admin = $this->adminUser();
         $qrCode = QrCode::create([
             'user_id' => $owner->id,
@@ -148,7 +148,7 @@ class QrCodePolicyTest extends TestCase
 
     public function test_admin_can_update_any_qr_code(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->create(['plan' => 'business']);
         $admin = $this->adminUser();
         $qrCode = QrCode::create([
             'user_id' => $owner->id,
@@ -166,7 +166,7 @@ class QrCodePolicyTest extends TestCase
 
     public function test_admin_can_delete_any_qr_code(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->create(['plan' => 'business']);
         $admin = $this->adminUser();
         $qrCode = QrCode::create([
             'user_id' => $owner->id,
@@ -182,7 +182,7 @@ class QrCodePolicyTest extends TestCase
 
     public function test_admin_index_lists_all_qr_codes(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->create(['plan' => 'business']);
         $admin = $this->adminUser();
 
         QrCode::create([
@@ -207,7 +207,7 @@ class QrCodePolicyTest extends TestCase
 
     public function test_nonexistent_qr_code_returns_404(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['plan' => 'business']);
         Sanctum::actingAs($user);
 
         $this->getJson('/api/qr-codes/999999')->assertNotFound();
@@ -215,7 +215,7 @@ class QrCodePolicyTest extends TestCase
 
     public function test_any_authenticated_user_can_create_qr_code(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['plan' => 'business']);
         Sanctum::actingAs($user);
 
         $this->postJson('/api/qr-codes', [

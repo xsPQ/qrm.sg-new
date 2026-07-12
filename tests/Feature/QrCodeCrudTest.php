@@ -20,7 +20,7 @@ class QrCodeCrudTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->user = User::factory()->create();
+        $this->user = User::factory()->create(['plan' => 'business']);
         Sanctum::actingAs($this->user);
     }
 

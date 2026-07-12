@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Http\Middleware\CheckApiAccess;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -36,15 +37,16 @@ class ApiTokenManager extends Component
     {
         $user = auth()->user();
 
-        return $user !== null
-            && ($user->plan === 'business' || $user->subscribed('business'));
+        return $user !== null && app(CheckApiAccess::class)->userHasApiAccess($user);
     }
 
     public function createToken(): void
     {
         if (! $this->canManageTokens()) {
+            $user = auth()->user();
+
             throw ValidationException::withMessages([
-                'name' => __('API token creation is available for Business users only.'),
+                'name' => app(CheckApiAccess::class)->denialPayload($user)['message'],
             ]);
         }
 

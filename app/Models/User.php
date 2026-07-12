@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-#[Fillable(['name', 'email', 'password', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
+#[Fillable(['name', 'email', 'password', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at', 'plan', 'api_addon_enabled'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail, FilamentUser
 {
@@ -55,6 +55,7 @@ class User extends Authenticatable implements MustVerifyEmail, FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'trial_ends_at' => 'datetime',
+            'api_addon_enabled' => 'boolean',
         ];
     }
 

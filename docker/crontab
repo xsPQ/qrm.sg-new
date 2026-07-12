@@ -1,0 +1,10 @@
+#
+# qrm.sg cron schedule (supercronic format)
+# Runs inside the app container via supercronic + supervisor
+#
+
+# Laravel scheduler — runs every minute
+* * * * * cd /var/www/qrm.sg && php artisan schedule:run >> /dev/null 2>&1
+
+# Queue worker health check — restart if dead
+*/5 * * * * cd /var/www/qrm.sg && php artisan queue:restart >> /dev/null 2>&1

@@ -8,6 +8,7 @@ use App\Http\Controllers\Qr\QrCodeEditController;
 use App\Http\Controllers\QrCodePublicResolverController;
 use App\Http\Controllers\QrScanController;
 use App\Livewire\BulkQrImport;
+use App\Http\Middleware\AnonymousFairUse;
 use App\Http\Middleware\ResolverRateLimit;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,7 @@ Route::get('/health/detailed', [HealthController::class, 'check'])->name('health
 
 // Anonymous QR creation (FEAT-03)
 Route::get('/create', App\Livewire\AnonymousCreator::class)
+    ->middleware(AnonymousFairUse::class)
     ->name('qr.create-anonymous');
 
 Route::view('dashboard', 'dashboard')

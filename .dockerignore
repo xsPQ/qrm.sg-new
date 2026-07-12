@@ -1,43 +1,19 @@
-# Version control + CI metadata
 .git
-.gitattributes
 .github
-
-# Editor / IDE
-.codex
-.cursor
-.idea
-.nova
-.vscode
-.zed
-
-# Dependencies are (re)installed inside the image, never copied from the host.
-node_modules
-vendor
-
-# Environment: never bake secrets into the image.
 .env
-.env.*
-!.env.example
-
-# Frontend build artefacts are produced by the `frontend` build stage.
-public/build
-public/hot
-# public/storage is a host-absolute symlink; recreated in the image.
-public/storage
-
-# Laravel volatile runtime state (writable dirs are created in the image).
-storage/logs
-storage/framework/cache
-storage/framework/sessions
-storage/framework/testing
-storage/framework/views
-storage/pail
-bootstrap/cache/*.php
-
-# Tooling caches + reports
-.phpunit.cache
-.phpunit.result.cache
-.phpactor.json
-build-results
-.phpstan
+.env.backup
+.env.production
+vendor
+node_modules
+database/*.sqlite
+npm-debug.log
+composer.lock
+docker/pgdata
+.idea
+.vscode
+*.md
+docs
+tests
+phpunit.xml
+phpstan.neon
+.pint

@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
 
+        // Trust all proxies (Docker nginx / reverse proxy / TLS termination)
+        $middleware->trustProxies(at: '*');
+
         // Auto-verify email in dev/staging when APP_SKIP_EMAIL_VERIFICATION=true
         $middleware->append(\App\Http\Middleware\SkipEmailVerification::class);
 

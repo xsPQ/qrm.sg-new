@@ -67,7 +67,7 @@ Jeder von qrm.sg erzeugte QR-Code kodiert **ausschließlich die Resolver-URL** (
 
 ### 2.2 Pro — 5 EUR/Monat
 
-| Feature | Umfang |
+|| Feature | Umfang |
 |---|---|
 | Aktive QR-Codes | Unbegrenzt |
 | Gültigkeit | Unbegrenzt (kein automatischer Ablauf) |
@@ -77,17 +77,18 @@ Jeder von qrm.sg erzeugte QR-Code kodiert **ausschließlich die Resolver-URL** (
 | Download | SVG + PNG in hoher Auflösung |
 | Custom Alias | Ja — `qrm.sg/mein-link` |
 | Passwortschutz | Ja |
+| API-Zugang | Optionales Add-on: +1 EUR/Monat für REST-API mit Token-Auth |
 | Support | E-Mail-Support |
 
 **Zielgruppe:** Freiberufler, Kleinunternehmen, Agenturen.
 
 ### 2.3 Business — 19 EUR/Monat
 
-| Feature | Umfang |
+|| Feature | Umfang |
 |---|---|
 | Alles aus Pro | Ja |
+| API-Zugang | REST API mit Rate-Limits (inklusive, kein Aufpreis) |
 | Eigene Domain | `qr.firma.de` — Custom Domain Setup |
-| API-Zugang | REST API mit Rate-Limits |
 | Team-Verwaltung | Mehrere Nutzer mit Rollen |
 | White-Label | Eigene Branding-Optionen |
 | Bulk-Import/Export | CSV-Import für Kampagnen |
@@ -1451,6 +1452,231 @@ Steuerung über `qrCode.entitlementSnapshot()->plan()` im `qr-types/layout.blade
 **Status:** ✅ Umgesetzt — Layout, i18n DE/EN, Browser verifiziert.
 
 **Priorität:** Mittel
+
+---
+
+#### FEAT-10: Vollständige API-Unterstützung und KI-Agenten-Bedienbarkeit
+
+**Ziel:** Die REST-API soll von KI-Agenten und externen Systemen ohne Vorwissen nutzbar sein. Alle Endpunkte sind maschinenlesbar dokumentiert, QR-Typ-Schemata sind maschinell abrufbar, und Rate-Limits sind transparent.
+
+**Tarif-Regelung:**
+- **Free:** Kein API-Zugang
+- **Pro:** API-Zugang als optionales Add-on (+1 EUR/Monat). Token-Erstellung im Account freischaltbar.
+- **Business:** API-Zugang inklusive, kein Aufpreis
+
+**Voraussetzung:** API-Token-Erstellung im Account-Bereich erfordert aktivierten API-Zugang (Pro-Add-on oder Business). Das Backend prüft bei Token-nutzung, ob der Nutzer API-Berechtigung hat. Bei Pro ohne Add-on wird HTTP 403 zurückgegeben.
+
+### 10.1 OpenAPI/Scribe-Dokumentation (Muss)
+
+- Die gesamte API wird mit Scribe (Laravel-Paket) oder alternativ manuell als OpenAPI 3.1 YAML dokumentiert
+- Die Doku wird unter `GET /api/docs` als HTML und `GET /api/openapi.json` als maschinenlesbares JSON ausgeliefert
+- Jeder Endpunkt enthält: Method, Path, Request-Body-Schema, Response-Schema, Fehler-Codes, Beispiel-Request, Beispiel-Response
+- Auth-Endpunkte sind als `Bearer JWT` markiert
+- Die Doku wird automatisch aus Code-Annotationen generiert, nicht manuell gepflegt
+- Ein KI-Agent, der nur `/api/openapi.json` aufruft, kann die gesamte API nutzen
+
+### 10.2 QR-Typ-Schema-Endpoint (Muss)
+
+- `GET /api/qr-types` liefert alle 8 QR-Typen mit ihren Felddefinitionen
+- Pro Typ: `id`, `label`, `description`, `icon`, `fields[]` mit `key`, `label`, `type` (text/url/textarea/select/checkbox/datetime-local/number/email), `required`, `maxlength`, `placeholder`, `options[]` für Selects
+- Ein KI-Agent kann daraus automatisch gültige `POST /api/qr-codes` Requests konstruieren
+- Beispiel-Response:
+
+```json
+{
+  "types": [
+    {
+      "id": "url",
+      "label": "URL",
+      "description": "Weiterleitung zu einer Website",
+      "fields": [
+        { "key": "url", "label": "Destination URL", "type": "url", "required": true, "maxlength": 2048 }
+      ]
+    },
+    {
+      "id": "wifi",
+      "label": "WiFi",
+      "fields": [
+        { "key": "ssid", "label": "Netzwerkname", "type": "text", "required": true, "maxlength": 32 },
+        { "key": "encryption", "label": "Verschlüsselung", "type": "select", "required": true, "options": { "WPA": "WPA/WPA2", "WEP": "WEP", "none": "Keine" } }
+      ]
+    }
+  ]
+}
+```
+
+### 10.3 API-Index-Endpoint (Muss)
+
+- `GET /api` liefert eine kompakte Übersicht aller verfügbaren Endpunkte
+- Pro Endpunkt: `method`, `path`, `description`, `auth_required`, `scopes[]`
+- Format:
+
+```json
+{
+  "name": "qrm.sg API",
+  "version": "1.0",
+  "endpoints": [
+    { "method": "GET", "path": "/api/qr-types", "description": "Alle QR-Typen mit Schemata", "auth_required": false },
+    { "method": "POST", "path": "/api/qr-codes", "description": "QR-Code erstellen", "auth_required": true, "scopes": ["qr:write"] },
+    { "method": "GET", "path": "/api/qr-codes/{id}/stats", "description": "Scan-Statistiken", "auth_required": true, "scopes": ["stats:read"] }
+  ]
+}
+```
+
+### 10.4 Rate-Limit-Header (Soll)
+
+- Jede API-Antwort enthält standardisierte Rate-Limit-Header:
+  - `X-RateLimit-Limit`: Maximale Requests pro Minute für diesen Endpunkt
+  - `X-RateLimit-Remaining`: Verbleibende Requests im aktuellen Fenster
+  - `X-RateLimit-Reset`: Unix-Timestamp des nächsten Reset-Zeitpunkts
+- Bei HTTP 429 zusätzlich: `Retry-After` Header (Sekunden bis Reset)
+- Rate-Limits pro Tarif: Pro 60/Min, Business 300/Min (gemäß FEAT-08)
+- Implementiert via Laravel `RateLimiter` + Middleware
+
+### 10.5 Analytics-API-Endpoints (Soll)
+
+- `GET /api/qr-codes/{id}/stats` — Gesamtstatistiken + letzte 20 Scans
+- `GET /api/qr-codes/{id}/stats/daily` — Tägliche Aggregationen
+- `GET /api/qr-codes/{id}/stats/hourly` — Stündliche Aggregationen
+- Auth: Token mit `stats:read` Scope, Besitzer oder Admin
+- Response-Format analog §3.3.2
+
+### 10.6 API-Berechtigungsprüfung (Muss)
+
+- Beim Erstellen eines API-Tokens prüft das Backend den Nutzer-Tarif:
+  - Free → 403 "API-Zugang erfordert Pro mit API-Add-on oder Business"
+  - Pro ohne API-Add-on → 403 mit Upgrade-Hinweis
+  - Pro mit API-Add-on → Token mit konfigurierten Scopes
+  - Business → Token mit allen Scopes
+- Stripe-Produkt für das Pro-API-Add-on: `pro_api_addon` (+1 EUR/Monat)
+- Die Berechtigungsprüfung läuft bei jeder API-Anfrage mit Bearer-Token
+
+### 10.7 Strukturierte Fehler-Responses (Muss)
+
+- Alle Fehler-Responses folgen einheitlichem Format:
+  - `message`: Menschlich-lesbare Fehlerbeschreibung
+  - `code`: Maschinenlesbarer Fehlercode (z.B. `VALIDATION_ERROR`, `RATE_LIMIT_EXCEEDED`, `API_ACCESS_DENIED`, `FREE_TIER_LIMIT_EXCEEDED`)
+  - `errors` (optional): Feld-spezifische Validierungsfehler
+- HTTP-Status-Codes konsistent gemäß §5.3
+
+---
+
+### 12.10 Deployment-Architektur — Docker (Juli 2026)
+
+Die gesamte Anwendung wird in Docker-Containern betrieben. Ziel ist ein reproduzierbarer, versionierter und schnell aktualisierbarer Deployment-Prozess.
+
+#### Architektur
+
+```
+┌── Docker Host (10.0.0.102) ─────────────────────────────────┐
+│                                                               │
+│  ┌── qrm.sg-app (Container) ──────────────────────────────┐  │
+│  │                                                         │  │
+│  │  Supervisor                                              │  │
+│  │    ├─ Nginx :80/:443                                    │  │
+│  │    ├─ PHP-FPM                                           │  │
+│  │    ├─ Queue Worker (php artisan queue:work --redis)     │  │
+│  │    └─ Cron Scheduler (php artisan schedule:run)         │  │
+│  │                                                         │  │
+│  │  Redis (Cache + Queue + Session)                        │  │
+│  │                                                         │  │
+│  │  /var/www/qrm.sg  ← gemountetes Volume                  │  │
+│  │    (Git-Working-Tree, persistente Dateien)              │  │
+│  │                                                         │  │
+│  └──────────────────┬──────────────────────────────────────┘  │
+│                     │ Volume (persistent)                      │
+│  ┌── qrm.sg-db (Container) ───────────────────────────────┐  │
+│  │                                                         │  │
+│  │  PostgreSQL 16                                          │  │
+│  │    Datenbank: qrm_sg                                    │  │
+│  │    Volume: pg_data (persistent, überlebt Rebuilds)      │  │
+│  │                                                         │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│                                                               │
+└───────────────────────────────────────────────────────────────┘
+```
+
+#### Design-Entscheidungen
+
+| Entscheidung | Begründung |
+|---|---|
+| **Ein App-Container** mit Supervisor | Vereinfacht Deployment, eine Einheit, kein Docker-Netzwerk-Overhead |
+| **PostgreSQL separat** | Daten überleben App-Rebuilds; DB kann unabhängig skaliert/gebackupt werden |
+| **Redis im App-Container** | Cache + Queue + Session in einem Prozess; geringer Overhead |
+| **Code als Volume (git pull)** | Hermes kann in den Container exec'en und `git pull` ausführen → sofortiger Code-Update ohne Rebuild |
+| **Supervisor statt einzelner Dienste** | Ein Prozessmanager regelt Nginx, PHP-FPM, Queue-Worker und Scheduler |
+
+#### Update-Strategie (Zero-Downtime Deploy)
+
+Updates erfolgen durch Hermes direkt im laufenden Container, ohne Neustart:
+
+| Schritt | Befehl | Dauer |
+|---|---|---|
+| 1. Code pullen | `cd /var/www/qrm.sg && git pull origin main` | ~2s |
+| 2. Dependencies | `composer install --no-dev --optimize-autoloader` (nur bei Änderung) | ~5s |
+| 3. Frontend | `npm ci && npm run build` (nur bei Asset-Änderung) | ~10s |
+| 4. Migrations | `php artisan migrate --force` | ~1s |
+| 5. Cache warmen | `php artisan config:cache && php artisan route:cache && php artisan view:cache` | ~1s |
+| 6. Worker restart | `php artisan queue:restart` (Worker holen neuen Code beim nächsten Job) | sofort |
+
+**Gesamt: ~10-20 Sekunden.** Aktive Requests laufen auf dem alten Code zu Ende; neue Requests bekommen den neuen Code. Kein Container-Neustart, keine Downtime.
+
+#### docker-compose.yml Struktur
+
+```yaml
+services:
+  app:
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - qr-code-data:/var/www/qrm.sg
+      - pg-socket:/var/run/postgresql
+    depends_on:
+      - db
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - REDIS_HOST=127.0.0.1
+      - APP_ENV=production
+
+  db:
+    image: postgres:16-alpine
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=qrm_sg
+      - POSTGRES_USER=qrm
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    restart: always
+
+volumes:
+  qr-code-data:
+  pg-data:
+```
+
+#### Umgebungsvariablen (Production)
+
+| Variable | Wert |
+|---|---|
+| `APP_ENV` | `production` |
+| `APP_DEBUG` | `false` |
+| `APP_URL` | `https://qrm.sg` |
+| `DB_CONNECTION` | `pgsql` |
+| `DB_HOST` | `db` |
+| `CACHE_STORE` | `redis` |
+| `SESSION_DRIVER` | `redis` |
+| `QUEUE_CONNECTION` | `redis` |
+| `MAIL_MAILER` | `smtp` (Resend) |
+| `REDIS_HOST` | `127.0.0.1` |
+
+#### Sicherheitsvorgaben
+
+- DB-Passwort via `.env`-File oder Docker Secret, nie im Image
+- `APP_DEBUG=false` in Produktion
+- Stripe Webhook Secret konfiguriert
+- Trusted-Proxies-Middleware für Reverse Proxy / TLS-Termination
+- SSL/TLS via nginx (Let's Encrypt oder externe Terminierung)
 
 ---
 

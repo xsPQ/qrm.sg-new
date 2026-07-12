@@ -9,6 +9,7 @@ use App\Events\QrCodeExpiringSoon;
 use App\Listeners\SendFreeTierUpgradeHint;
 use App\Listeners\SendQrCodeExpiryWarning;
 use App\Models\QrCode;
+use App\Observers\QrCodeRevisionObserver;
 use App\Policies\QrCodePolicy;
 use App\Services\QrCodeResolver;
 use App\Services\ResolverCache;
@@ -54,6 +55,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(QrCode::class, QrCodePolicy::class);
+
+        // FEAT-07: Auto-capture revision snapshots on QR code edits.
+        QrCode::observe(QrCodeRevisionObserver::class);
 
         // E-Mail-Flow hooks (P2-T12). The listeners enqueue the corresponding
         // queued Mailables, so delivery runs over the queue (P1-T06).

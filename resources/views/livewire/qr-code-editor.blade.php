@@ -265,6 +265,54 @@
                 </div>
             @endif
 
+            {{-- FEAT-07: Version History --}}
+            <div class="mt-6 border-t border-gray-100 pt-6">
+                @php $historyIcon = ($showHistoryPanel ?? false) ? 'rotate-90' : ''; @endphp
+                <button type="button" wire:click="toggleHistoryPanel" class="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                    <svg class="h-4 w-4 transition {{ $historyIcon }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    {{ __('Version History') }}
+                    @if($this->revisions->count() > 0)
+                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{{ $this->revisions->count() }}</span>
+                    @endif
+                </button>
+
+                @if($showHistoryPanel ?? false)
+                    @if($historyMessage)
+                        <div class="mt-3 rounded-md bg-green-50 p-3 text-sm text-green-700 ring-1 ring-inset ring-green-600/20">
+                            {{ $historyMessage }}
+                        </div>
+                    @endif
+
+                    @if($this->revisions->isEmpty())
+                        <p class="mt-4 text-sm text-gray-400">{{ __('No previous versions yet. Changes you make will be saved here automatically.') }}</p>
+                    @else
+                        <div class="mt-4 space-y-2">
+                            @foreach($this->revisions as $revision)
+                                <div class="flex items-center justify-between rounded-lg border border-gray-100 bg-white px-4 py-3 text-sm">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs">v{{ $revision->version }}</span>
+                                            <span class="font-medium text-gray-900 truncate">{{ $revision->change_summary ?: 'Updated' }}</span>
+                                        </div>
+                                        <p class="mt-0.5 text-xs text-gray-400">
+                                            {{ $revision->created_at?->format('M j, Y g:i A') }}
+                                            @if($revision->user) · {{ $revision->user->name }} @endif
+                                        </p>
+                                    </div>
+                                    <button type="button"
+                                        wire:click="restoreRevision({{ $revision->id }})"
+                                        wire:confirm="{{ __('Restore this version? The current state will be saved as a new revision.') }}"
+                                        class="ml-4 inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500">
+                                        <svg class="mr-1 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                                        {{ __('Restore') }}
+                                    </button>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                @endif
+            </div>
+
             <div class="flex items-center justify-end gap-3 border-t border-gray-100 pt-6">
                 <a href="{{ route('dashboard') }}" wire:navigate
                    class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500">

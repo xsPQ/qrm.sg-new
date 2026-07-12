@@ -192,6 +192,11 @@ class QrCode extends Model
         return $this->settings['ab_testing']['strategy'] ?? 'random';
     }
 
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(QrCodeRevision::class)->orderByDesc('version');
+    }
+
     public function scans(): HasMany
     {
         return $this->hasMany(Scan::class);

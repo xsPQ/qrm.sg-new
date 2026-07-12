@@ -112,6 +112,10 @@ class QrCodeEditor extends Component
 
     public bool $showAbPanel = true;
 
+    // FEAT-07: Version history
+    public bool $showHistoryPanel = false;
+    public ?string $historyMessage = null;
+
     public function toggleAbPanel(): void
     {
         $this->showAbPanel = ! $this->showAbPanel;
@@ -461,6 +465,56 @@ class QrCodeEditor extends Component
     /**
      * Load existing variants into the editor state.
      */
+    // ---------------------------------------------------------------
+    // FEAT-07: Version History
+    // ---------------------------------------------------------------
+
+    /**
+     * Load the revision history for this QR code.
+     */
+    public function getRevisionsProperty()
+    {
+        return $this->qrCode->revisions()
+            ->with('user:id,name')
+            ->limit(50)
+            ->get();
+    }
+
+    public function toggleHistoryPanel(): void
+    {
+        $this->showHistoryPanel = ! $this->showHistoryPanel;
+        $this->historyMessage = null;
+    }
+
+    /**
+     * Restore a previous version. The revision's snapshot (which captured
+     * the state BEFORE a change) is applied back to content, title, settings.
+     * Type and route are never restored. The restore itself triggers a new
+     * revision (capturing the current state as the "before"), so the action
+     * is reversible.
+     */
+    public function restoreRevision(int $revisionId, QrCodeService $qrCodeService): void
+    {
+        $revision = $this->qrCode->revisions()->findOrFail($revisionId);
+        $snapshot = $revision->snapshot;
+
+        $payload = [
+            'title' => $snapshot['title'] ?? $this->qrCode->title,
+            'content' => $snapshot['content'] ?? $this->qrCode->content,
+            'settings' => $snapshot['settings'] ?? $this->qrCode->settings,
+        ];
+
+        $qrCodeService->update($this->qrCode, $payload);
+
+        // Reload fresh model.
+        $this->qrCode = $this->qrCode->fresh(['route', 'variants']);
+        $this->title = (string) $this->qrCode->title;
+        $this->content = $this->seedContent($this->qrCode);
+        $this->style = $this->seedStyle($this->qrCode);
+
+        $this->historyMessage = __('Version :v restored.', ['v' => $revision->version]);
+    }
+
     protected function seedAbVariants(QrCode $qrCode): void
     {
         $this->abVariants = $qrCode->variants()

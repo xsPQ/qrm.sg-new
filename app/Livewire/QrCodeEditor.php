@@ -10,9 +10,11 @@ use App\Exceptions\FeatureNotEntitledException;
 use App\Exceptions\SlugCollisionException;
 use App\Livewire\Concerns\RendersQrTypeFields;
 use App\Models\QrCode;
+use App\Models\QrCodeVariant;
 use App\Services\QrCodeRouteService;
 use App\Services\QrCodeService;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * QR-Code edit form (Pflichtenheft §3.6.1 / §5.1, P2-T03).
@@ -37,6 +39,7 @@ use Livewire\Component;
  */
 class QrCodeEditor extends Component
 {
+    use WithFileUploads;
     use RendersQrTypeFields;
 
     public QrCode $qrCode;
@@ -67,6 +70,18 @@ class QrCodeEditor extends Component
 
     public bool $showStylePanel = false;
 
+    // Style form properties (FEAT-04 Design Tab)
+    public string $fgColor = '#000000';
+    public string $bgColor = '#ffffff';
+    public string $dotStyle = 'square';
+    public string $errorCorrection = 'm';
+    public bool $gradientEnabled = false;
+    public string $gradientFrom = '#6366f1';
+    public string $gradientTo = '#a855f7';
+    public int $gradientAngle = 45;
+    public int $qrMargin = 10;
+    public $logoUpload = null;
+
     // Live alias-check state (mirrors the Creator).
     public ?string $aliasStatus = null; // null|available|taken|reserved|invalid
     public ?string $aliasMessage = null;
@@ -78,6 +93,20 @@ class QrCodeEditor extends Component
 
     // Feature-gate flags for this code's own (grandfathered) snapshot (P2-T07).
     public array $features = [];
+
+    // FEAT-06: A/B testing variant editor state.
+    /** @var array<int, array{label:string,url:string,weight:int,device_target:?string}> */
+    public array $abVariants = [];
+
+    public string $abStrategy = 'random';
+
+    // Staging fields for adding a new variant.
+    public string $newVariantLabel = '';
+    public string $newVariantUrl = '';
+    public int $newVariantWeight = 1;
+    public ?string $newVariantDeviceTarget = null;
+
+    public ?string $abSuccessMessage = null;
 
     public function mount(QrCode $qrCode): void
     {
@@ -97,6 +126,9 @@ class QrCodeEditor extends Component
         // Derive the feature flags from the code's own immutable snapshot so the
         // UI gates alias/password correctly even after a plan downgrade.
         $this->features = app(EntitlementGate::class)->featureFlags($qrCode->entitlementSnapshot());
+
+        // FEAT-06: Seed A/B testing state from persisted variants.
+        $this->seedAbVariants($qrCode);
     }
 
     /**
@@ -138,6 +170,24 @@ class QrCodeEditor extends Component
         $routeService ??= app(QrCodeRouteService::class);
         $host = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'localhost';
         $excludeId = $this->qrCode->route?->id;
+        $minLength = $this->aliasMinLength();
+
+        // Plan-aware length check (M5-T05): catch too-short aliases before the
+        // route service's hardcoded 4-char floor so Free/Pro users see a clear,
+        // plan-specific upgrade hint instead of a generic format error.
+        if (mb_strlen($value) < $minLength) {
+            $this->aliasStatus = 'invalid';
+
+            if ($minLength === 8) {
+                $this->aliasMessage = __('Aliases must be at least :min characters on the Free plan. Upgrade to Pro for shorter aliases.', ['min' => $minLength]);
+            } elseif ($minLength === 4) {
+                $this->aliasMessage = __('Aliases must be at least :min characters. Upgrade to Business for 2–3 character aliases.', ['min' => $minLength]);
+            } else {
+                $this->aliasMessage = __('Aliases must be at least :min characters.', ['min' => $minLength]);
+            }
+
+            return;
+        }
 
         try {
             $routeService->validateAlias($value, $host);
@@ -149,6 +199,19 @@ class QrCodeEditor extends Component
                 $this->aliasStatus = 'invalid';
                 $this->aliasMessage = $e->getMessage();
             }
+
+            return;
+        }
+
+        // Business premium-shortcode indicator (M5-T05): aliases ≤4 chars are
+        // flagged as premium shortcodes — allowed, but flagged for the UI.
+        if ($this->canUsePremiumAlias() && mb_strlen($value) <= 4) {
+            $this->aliasStatus = $routeService->isAliasAvailable($value, $host, $excludeId)
+                ? 'premium'
+                : 'taken';
+            $this->aliasMessage = $this->aliasStatus === 'premium'
+                ? __(':value is available as a premium shortcode.', ['value' => $value])
+                : __(':value is already taken.', ['value' => $value]);
 
             return;
         }
@@ -170,9 +233,11 @@ class QrCodeEditor extends Component
      */
     protected function rules(): array
     {
+        $minLength = $this->aliasMinLength();
+
         $rules = [
             'title' => ['required', 'string', 'max:255'],
-            'alias' => ['nullable', 'string', 'min:4', 'max:32', 'regex:/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/'],
+            'alias' => ['nullable', 'string', 'min:' . $minLength, 'max:' . $this->aliasMaxLength(), 'regex:/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/'],
             'password' => ['nullable', 'string', 'min:4'],
             'maxScans' => ['nullable', 'integer', 'min:1'],
         ];
@@ -274,6 +339,221 @@ class QrCodeEditor extends Component
     public function getCanUsePasswordProtectionProperty(): bool
     {
         return (bool) ($this->features['can_use_password_protection'] ?? true);
+    }
+
+    /**
+     * Plan-aware alias minimum length (M5-T05): Free 8, Pro 4, Business 2.
+     * Falls back to 4 (the old hardcoded floor) when feature flags are absent.
+     */
+    public function aliasMinLength(): int
+    {
+        return (int) ($this->features['alias_min_length'] ?? 4);
+    }
+
+    /**
+     * Alias maximum length — constant 32 across all plans (M5-T05).
+     */
+    public function aliasMaxLength(): int
+    {
+        return (int) ($this->features['alias_max_length'] ?? 32);
+    }
+
+    /**
+     * Whether this code's snapshot supports premium shortcodes (≤4 chars) (M5-T05).
+     */
+    public function canUsePremiumAlias(): bool
+    {
+        return (bool) ($this->features['can_use_premium_alias'] ?? false);
+    }
+
+    /**
+     * The plan name from the code's snapshot, for Blade conditionals (M5-T05).
+     */
+    public function aliasPlan(): string
+    {
+        return (string) ($this->features['plan'] ?? 'free');
+    }
+
+    /**
+     * Tier-specific alias hint text shown below the alias field (M5-T05).
+     */
+    public function aliasTierHint(): string
+    {
+        $plan = $this->aliasPlan();
+        $min = $this->aliasMinLength();
+        $max = $this->aliasMaxLength();
+
+        return match ($plan) {
+            'free' => __("Custom aliases must be :min–:max characters. Shorter aliases require Pro.", ['min' => $min, 'max' => $max]),
+            'pro' => __("Custom aliases can be :min–:max characters.", ['min' => $min, 'max' => $max]),
+            'business' => __("Premium aliases (2+ chars) available. Short codes (≤4) are premium.", ['min' => $min, 'max' => $max]),
+            default => __("Custom aliases must be :min–:max characters.", ['min' => $min, 'max' => $max]),
+        };
+    }
+
+    // ---------------------------------------------------------------
+    // FEAT-04: Visual Design computed properties (mirrors Creator)
+    // ---------------------------------------------------------------
+
+    public function getCanUseGradientProperty(): bool
+    {
+        return ($this->features['plan'] ?? 'free') !== 'free';
+    }
+
+    public function getCanUseLogoProperty(): bool
+    {
+        return ($this->features['plan'] ?? 'free') !== 'free';
+    }
+
+    public function getCanUsePremiumEcProperty(): bool
+    {
+        return ($this->features['plan'] ?? 'free') !== 'free';
+    }
+
+    public function getDotStylesProperty(): array
+    {
+        return ['square' => 'Square', 'round' => 'Round', 'extra_round' => 'Extra Round'];
+    }
+
+    public function getEcLevelsProperty(): array
+    {
+        return ['l' => 'Low (7%)', 'm' => 'Medium (15%)'];
+    }
+
+    public function getPremiumEcLevelsProperty(): array
+    {
+        return ['q' => 'Quartile (25%)', 'h' => 'High (30%)'];
+    }
+
+    // ---------------------------------------------------------------
+    // FEAT-06: A/B Testing variant management
+    // ---------------------------------------------------------------
+
+    /**
+     * Whether this code's snapshot allows A/B testing (FEAT-06, Pro+ only).
+     */
+    public function getCanUseAbTestingProperty(): bool
+    {
+        return (bool) ($this->features['can_use_ab_testing'] ?? false);
+    }
+
+    /**
+     * Whether the A/B testing section should be shown: only for url/redirect
+     * types (variant redirect only makes sense for link-type codes).
+     */
+    public function getShowAbTestingSectionProperty(): bool
+    {
+        return in_array($this->qrCode->type, ['url', 'redirect'], true);
+    }
+
+    /**
+     * Load existing variants into the editor state.
+     */
+    protected function seedAbVariants(QrCode $qrCode): void
+    {
+        $this->abVariants = $qrCode->variants()
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn (QrCodeVariant $v) => [
+                'label' => $v->label,
+                'url' => $v->url,
+                'weight' => $v->weight,
+                'device_target' => $v->device_target,
+            ])
+            ->values()
+            ->toArray();
+
+        $this->abStrategy = $qrCode->variantStrategy();
+    }
+
+    /**
+     * Add a new variant to the staging list (not yet persisted).
+     */
+    public function addVariant(): void
+    {
+        $this->validate([
+            'newVariantLabel' => 'required|string|max:10',
+            'newVariantUrl' => 'required|url|max:2048',
+            'newVariantWeight' => 'required|integer|min:1|max:100',
+            'newVariantDeviceTarget' => 'nullable|in:mobile,desktop,tablet',
+        ], [
+            'newVariantLabel.required' => __('A label is required.'),
+            'newVariantUrl.required' => __('A destination URL is required.'),
+            'newVariantUrl.url' => __('The destination must be a valid URL.'),
+        ]);
+
+        $this->abVariants[] = [
+            'label' => strtoupper(trim($this->newVariantLabel)),
+            'url' => trim($this->newVariantUrl),
+            'weight' => $this->newVariantWeight,
+            'device_target' => $this->newVariantDeviceTarget ?: null,
+        ];
+
+        // Auto-detect device strategy if a device target is set.
+        if ($this->newVariantDeviceTarget) {
+            $this->abStrategy = 'device';
+        }
+
+        $this->reset('newVariantLabel', 'newVariantUrl', 'newVariantWeight', 'newVariantDeviceTarget');
+        $this->newVariantWeight = 1;
+    }
+
+    /**
+     * Remove a variant from the staging list by index.
+     */
+    public function removeVariant(int $index): void
+    {
+        unset($this->abVariants[$index]);
+        $this->abVariants = array_values($this->abVariants);
+    }
+
+    /**
+     * Persist all staged variants via QrCodeService::syncVariants().
+     */
+    public function saveVariants(QrCodeService $qrCodeService): void
+    {
+        $this->abSuccessMessage = null;
+
+        $this->validate([
+            'abVariants.*.label' => 'required|string|max:10',
+            'abVariants.*.url' => 'required|url|max:2048',
+            'abVariants.*.weight' => 'required|integer|min:1|max:100',
+            'abVariants.*.device_target' => 'nullable|in:mobile,desktop,tablet',
+        ]);
+
+        try {
+            $variantsData = array_map(function (array $v): array {
+                return [
+                    'label' => $v['label'],
+                    'url' => $v['url'],
+                    'weight' => (int) $v['weight'],
+                    'device_target' => $v['device_target'] ?? null,
+                ];
+            }, $this->abVariants);
+
+            $qrCodeService->syncVariants($this->qrCode, $variantsData);
+
+            // Reload the fresh model + relationship.
+            $this->qrCode = $this->qrCode->fresh(['variants', 'route']);
+            $this->seedAbVariants($this->qrCode);
+
+            $this->abSuccessMessage = __('A/B test variants saved.');
+        } catch (FeatureNotEntitledException $e) {
+            $this->addError('ab_testing', $e->getMessage());
+        }
+    }
+
+    /**
+     * Remove all variants (disable A/B testing).
+     */
+    public function clearAllVariants(QrCodeService $qrCodeService): void
+    {
+        $qrCodeService->clearVariants($this->qrCode);
+
+        $this->qrCode = $this->qrCode->fresh(['variants', 'route']);
+        $this->abVariants = [];
+        $this->abStrategy = 'random';
+        $this->abSuccessMessage = __('A/B testing disabled.');
     }
 
     /**

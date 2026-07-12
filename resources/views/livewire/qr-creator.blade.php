@@ -233,6 +233,9 @@
                                 </div>
                             @endif
                         </div>
+
+                        {{-- Visual Design panel (M5-T04) --}}
+                        @include('livewire.qr-design-panel')
                     </section>
                 </div>
 

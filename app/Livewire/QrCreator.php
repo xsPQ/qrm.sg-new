@@ -23,6 +23,7 @@ use App\Services\QrCodeService;
 use App\Services\QrPreviewService;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Creator-UI (P2-T04): type selection, type-specific dynamic forms, live
@@ -36,6 +37,7 @@ use Livewire\Component;
  */
 class QrCreator extends Component
 {
+    use WithFileUploads;
     public string $title = '';
 
     public string $type = 'url';
@@ -58,6 +60,18 @@ class QrCreator extends Component
     public array $style = [];
 
     public bool $showStylePanel = false;
+
+    // Style form properties (used by qr-design-panel.blade.php)
+    public string $fgColor = '#000000';
+    public string $bgColor = '#ffffff';
+    public string $dotStyle = 'square';
+    public string $errorCorrection = 'm';
+    public bool $gradientEnabled = false;
+    public string $gradientFrom = '#6366f1';
+    public string $gradientTo = '#a855f7';
+    public int $gradientAngle = 45;
+    public int $qrMargin = 10;
+    public $logoUpload = null;
 
     // Live alias-check state.
     public ?string $aliasStatus = null; // null|available|taken|reserved|invalid
@@ -128,6 +142,31 @@ class QrCreator extends Component
 
         $routeService ??= app(QrCodeRouteService::class);
         $host = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'localhost';
+        $minLength = $this->aliasMinLength();
+
+        // Reserved system paths are always checked first, regardless of length.
+        if ($routeService->isReservedPath($value)) {
+            $this->aliasStatus = 'reserved';
+            $this->aliasMessage = __(':value is a reserved system path and cannot be used as an alias.', ['value' => $value]);
+
+            return;
+        }
+
+        // Plan-aware length check (M5-T05): catch too-short aliases so Free/Pro
+        // users see a clear, plan-specific upgrade hint.
+        if (mb_strlen($value) < $minLength) {
+            $this->aliasStatus = 'invalid';
+
+            if ($minLength === 8) {
+                $this->aliasMessage = __('Aliases must be at least :min characters on the Free plan. Upgrade to Pro for shorter aliases.', ['min' => $minLength]);
+            } elseif ($minLength === 4) {
+                $this->aliasMessage = __('Aliases must be at least :min characters. Upgrade to Business for 2–3 character aliases.', ['min' => $minLength]);
+            } else {
+                $this->aliasMessage = __('Aliases must be at least :min characters.', ['min' => $minLength]);
+            }
+
+            return;
+        }
 
         try {
             $routeService->validateAlias($value, $host);
@@ -139,6 +178,19 @@ class QrCreator extends Component
                 $this->aliasStatus = 'invalid';
                 $this->aliasMessage = $e->getMessage();
             }
+
+            return;
+        }
+
+        // Business premium-shortcode indicator (M5-T05): aliases ≤4 chars are
+        // flagged as premium shortcodes — allowed, but flagged for the UI.
+        if ($this->canUsePremiumAlias() && mb_strlen($value) <= 4) {
+            $this->aliasStatus = $routeService->isAliasAvailable($value, $host)
+                ? 'premium'
+                : 'taken';
+            $this->aliasMessage = $this->aliasStatus === 'premium'
+                ? __(':value is available as a premium shortcode.', ['value' => $value])
+                : __(':value is already taken.', ['value' => $value]);
 
             return;
         }
@@ -160,9 +212,11 @@ class QrCreator extends Component
      */
     protected function rules(): array
     {
+        $minLength = $this->aliasMinLength();
+
         $rules = [
             'title' => ['required', 'string', 'max:255'],
-            'alias' => ['nullable', 'string', 'min:4', 'max:32', 'regex:/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/'],
+            'alias' => ['nullable', 'string', 'min:' . $minLength, 'max:' . $this->aliasMaxLength(), 'regex:/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/'],
             'password' => ['nullable', 'string', 'min:4'],
             'maxScans' => ['nullable', 'integer', 'min:1'],
         ];
@@ -365,6 +419,36 @@ class QrCreator extends Component
         );
     }
 
+    public function getCanUseGradientProperty(): bool
+    {
+        return ($this->features['plan'] ?? 'free') !== 'free';
+    }
+
+    public function getCanUseLogoProperty(): bool
+    {
+        return ($this->features['plan'] ?? 'free') !== 'free';
+    }
+
+    public function getCanUsePremiumEcProperty(): bool
+    {
+        return ($this->features['plan'] ?? 'free') !== 'free';
+    }
+
+    public function getDotStylesProperty(): array
+    {
+        return ['square' => 'Square', 'round' => 'Round', 'extra_round' => 'Extra Round'];
+    }
+
+    public function getEcLevelsProperty(): array
+    {
+        return ['l' => 'Low (7%)', 'm' => 'Medium (15%)'];
+    }
+
+    public function getPremiumEcLevelsProperty(): array
+    {
+        return ['q' => 'Quartile (25%)', 'h' => 'High (30%)'];
+    }
+
     public function getLimitReachedProperty(): bool
     {
         return (bool) ($this->freeTier['limit_reached'] ?? false);
@@ -386,6 +470,57 @@ class QrCreator extends Component
     public function getCanUsePasswordProtectionProperty(): bool
     {
         return (bool) ($this->features['can_use_password_protection'] ?? true);
+    }
+
+    /**
+     * Plan-aware alias minimum length (M5-T05): Free 8, Pro 4, Business 2.
+     * Falls back to 4 (the old hardcoded floor) when feature flags are absent.
+     */
+    public function aliasMinLength(): int
+    {
+        return (int) ($this->features['alias_min_length'] ?? 4);
+    }
+
+    /**
+     * Alias maximum length — constant 32 across all plans (M5-T05).
+     */
+    public function aliasMaxLength(): int
+    {
+        return (int) ($this->features['alias_max_length'] ?? 32);
+    }
+
+    /**
+     * Whether the current plan supports premium shortcodes (≤4 chars) (M5-T05).
+     * Business only; Pro and Free get an upgrade hint instead.
+     */
+    public function canUsePremiumAlias(): bool
+    {
+        return (bool) ($this->features['can_use_premium_alias'] ?? false);
+    }
+
+    /**
+     * The current plan name, for Blade conditionals (M5-T05).
+     */
+    public function aliasPlan(): string
+    {
+        return (string) ($this->features['plan'] ?? 'free');
+    }
+
+    /**
+     * Tier-specific alias hint text shown below the alias field (M5-T05).
+     */
+    public function aliasTierHint(): string
+    {
+        $plan = $this->aliasPlan();
+        $min = $this->aliasMinLength();
+        $max = $this->aliasMaxLength();
+
+        return match ($plan) {
+            'free' => __("Custom aliases must be :min–:max characters. Shorter aliases require Pro.", ['min' => $min, 'max' => $max]),
+            'pro' => __("Custom aliases can be :min–:max characters.", ['min' => $min, 'max' => $max]),
+            'business' => __("Premium aliases (2+ chars) available. Short codes (≤4) are premium.", ['min' => $min, 'max' => $max]),
+            default => __("Custom aliases must be :min–:max characters.", ['min' => $min, 'max' => $max]),
+        };
     }
 
     public function render()

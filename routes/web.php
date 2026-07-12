@@ -5,9 +5,14 @@ use App\Http\Controllers\Qr\QrCodeDetailController;
 use App\Http\Controllers\Qr\QrCodeEditController;
 use App\Http\Controllers\QrCodePublicResolverController;
 use App\Http\Controllers\QrScanController;
+use App\Http\Middleware\ResolverRateLimit;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'landing')->name('landing');
+
+// FEAT-08: Legal pages
+Route::view('/agb', 'legal.agb')->name('agb');
+Route::view('/terms', 'legal.terms')->name('terms');
 
 // Anonymous QR creation (FEAT-03)
 Route::get('/create', App\Livewire\AnonymousCreator::class)
@@ -73,6 +78,8 @@ Route::post('/r/{code}/password', [QrScanController::class, 'password'])->name('
 // Catch-all public resolver: a short code or alias served from the app host
 // root. Registered LAST so every explicit route (auth, dashboard, billing,
 // Filament /admin, etc.) is matched ahead of it.
+// FEAT-08: Rate-limited per IP to prevent scraping/DoS.
 Route::get('/{codeOrAlias}', [QrCodePublicResolverController::class, 'resolve'])
+    ->middleware(ResolverRateLimit::class)
     ->name('qr.public.resolve')
     ->where('codeOrAlias', '[A-Za-z0-9][A-Za-z0-9\-]*');

@@ -72,6 +72,29 @@ class QrCodeService
      */
     public function enforceFreeTierLimit(User $user): void
     {
+        // FEAT-08: Fair-Use check for all plans (including Pro/Business).
+        $fairUse = app(\App\Services\FairUseService::class);
+        $check = $fairUse->canCreateQrCode($user);
+
+        if (! $check['allowed']) {
+            // If it's a Free-tier hard limit, dispatch the event + throw the
+            // specific exception for backward compat with the upgrade-hint flow.
+            if (($check['reason'] ?? null) === 'max_active_reached'
+                && $this->resolveEntitlement($user)->isFree()) {
+                $limit = (int) config('qr.free.max_active_qr_codes', 10);
+                $active = $this->countActiveForFreeTier($user);
+                event(new FreeTierLimitReached($user, $active, $limit));
+                throw new FreeTierLimitExceededException($active, $limit);
+            }
+
+            throw new \App\Exceptions\FairUseExceededException(
+                $check['message'] ?? 'Fair-use limit exceeded.',
+                $check['reason'] ?? 'unknown',
+                $check['limit'] ?? null,
+                $check['current'] ?? null,
+            );
+        }
+
         if (! $this->resolveEntitlement($user)->isFree()) {
             return;
         }
@@ -80,11 +103,7 @@ class QrCodeService
         $active = $this->countActiveForFreeTier($user);
 
         if ($active >= $limit) {
-            // Extensible hook (P2-T06): the upgrade-hint email (P2-T12) listens
-            // to this event. Dispatched before the rejection so listeners can
-            // run even though the create itself is rejected.
             event(new FreeTierLimitReached($user, $active, $limit));
-
             throw new FreeTierLimitExceededException($active, $limit);
         }
     }

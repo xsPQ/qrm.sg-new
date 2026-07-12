@@ -1311,6 +1311,149 @@ Premium-Shortcodes (≤4 Zeichen) sind Business vorbehalten und als kostenpflich
 
 ---
 
+---
+
+### 12.9 Feature-Roadmap v2 — Erweiterung (Juli 2026)
+
+Auf Basis der Produktevaluierung wurden zusätzliche Features definiert, die vor dem produktiven Launch umgesetzt werden sollen.
+
+#### Übersicht
+
+| Feature | Code | Status | Priorität | Abhängigkeiten |
+|---|---|---|---|---|
+| E-Mail-Verifikation deaktivierbar | DEV-EMAIL-SKIP | ✅ Umgesetzt | Hoch | Keine |
+| Zahlungsanbieter-Integration | PAYMENT-01 | 🔨 Teilweise | Hoch | FEAT-08 |
+| QR-Code-Versionshistorie | FEAT-07 | ❌ Offen | Mittel | Keine |
+| Fair-Use-Policy & AGB | FEAT-08 | ❌ Offen | Hoch | Keine |
+| Branding & Eigenwerbung | FEAT-09 | ✅ Umgesetzt | Mittel | Keine |
+
+---
+
+#### DEV-EMAIL-SKIP: E-Mail-Verifikation in der Entwicklungsphase deaktivieren
+
+Solange qrm.sg nicht produktiv ist, wird die E-Mail-Verifikation über `APP_SKIP_EMAIL_VERIFICATION=true` in der `.env` umgangen. Das Middleware `SkipEmailVerification` setzt `email_verified_at` automatisch beim Login, sodass alle Funktionen sofort nutzbar sind.
+
+In CI und produktionsnahen Tests bleibt die Verifikationslogik aktiv (siehe §12.7).
+
+**Status:** ✅ Umgesetzt — Middleware, Config und `.env` konfiguriert.
+
+---
+
+#### PAYMENT-01: Zahlungsanbieter-Integration (Stripe via Laravel Cashier)
+
+Stripe ist via Laravel Cashier (`laravel/cashier` v16.6) bereits integriert. Es existieren Billing-Controller (Checkout, Customer Portal, Webhook), Migrations (Subscriptions, Webhook-Events) und das Entitlement-Snapshot-Modell für Bestandsschutz.
+
+**Noch offen:**
+
+| Aufgabe | Beschreibung |
+|---|---|
+| Stripe-Keys konfigurieren | `STRIPE_KEY`, `STRIPE_SECRET`, `STRIPE_WEBHOOK_SECRET` in `.env` |
+| Stripe-Produkte anlegen | Pro (5€/Monat), Business (19€/Monat) im Stripe-Dashboard |
+| Price-IDs hinterlegen | `STRIPE_PRO_PRICE_ID`, `STRIPE_BUSINESS_PRICE_ID` |
+| Checkout-Flow testen | End-to-End mit Test-Karte 4242 4242 4242 4242 |
+| Webhook-Handling prüfen | `stripe listen --forward-to localhost/api/billing/webhook` |
+| Customer Portal testen | Karten verwalten, kündigen, Rechnungen |
+| Premium-Short-URLs | Monetarisierung von ≤4-Zeichen-Aliasen |
+
+**Premium-Short-URL-Monetarisierung:**
+
+| Alias-Länge | Preis | Verfügbarkeit |
+|---|---|---|
+| 2–3 Zeichen | 9€/Monat (zusätzlich) | Business only |
+| 4–7 Zeichen | Im Abo inklusive | Pro / Business |
+| 8–32 Zeichen | Kostenlos | Alle Pläne |
+
+**Abo-Modell-Integration:** Der Stripe-Webhook ist die einzige Quelle der Wahrheit für bezahlte Features (§3.5.1). Ein erfolgreicher Webhook aktualisiert den User-Plan und den Entitlement-Snapshot für neu erstellte QR-Codes. Bestehende QR-Codes behalten ihren ursprünglichen Snapshot (§3.5.3).
+
+**Status:** 🔨 Teilweise umgesetzt — Code vorhanden, Stripe-Verbindung nicht aktiv.
+
+---
+
+#### FEAT-07: QR-Code-Versionshistorie
+
+Jede Änderung an einem QR-Code wird mit Versionssnapshot gespeichert. Der Nutzer kann frühere Versionen einsehen und wiederherstellen.
+
+**Datenmodell — neue Tabelle `qr_code_revisions`:**
+
+| Feld | Typ | Beschreibung |
+|---|---|---|
+| `id` | BIGINT (PK) | Revision-ID |
+| `qr_code_id` | BIGINT (FK → qr_codes) | Zugehöriger QR-Code |
+| `user_id` | BIGINT (FK → users) | Wer hat die Änderung durchgeführt |
+| `version` | INT | Monoton steigend pro QR-Code |
+| `snapshot` | JSONB | Vollständiger Snapshot (content, title, settings, alias, status) |
+| `change_summary` | TEXT | Auto-generierte Kurzbeschreibung |
+| `created_at` | TIMESTAMPTZ | Zeitpunkt der Änderung |
+
+**Anforderungen:**
+
+1. Bei jedem Speichern im Editor wird der **vorherige** Zustand als Revision gespeichert
+2. Der Snapshot enthält: `content`, `title`, `settings`, `alias`, `status`
+3. Der Editor erhält einen "History"-Bereich mit Timeline, Diff-Anzeige und Restore-Button
+4. Wiederherstellung setzt `content`, `title`, `settings` zurück (nicht `type`, nicht `route`)
+5. Resolver-Cache wird bei Restore invalidiert
+6. Maximal 50 Revisionen pro QR-Code (älteste werden bereinigt)
+
+**Status:** ❌ Nicht umgesetzt — keine Migration, kein Model, keine UI.
+
+**Priorität:** Mittel
+
+---
+
+#### FEAT-08: Fair-Use-Policy & AGB
+
+**Fair-Use-Limits** verhindern Missbrauch und definieren die nutzbaren Ressourcen pro Tarif:
+
+| Limit | Free | Pro | Business |
+|---|---|---|---|
+| Aktive QR-Codes | 10 | 500 (Fair-Use) | 5.000 (Fair-Use) |
+| Scans/Tag (pro Code) | Unbegrenzt | 50.000 | 500.000 |
+| API-Requests/Minute | — | 60 | 300 |
+| A/B-Varianten pro Code | 0 | 5 | 20 |
+| Custom Aliases | 0 | Unbegrenzt (4–32 Zeichen) | Unbegrenzt (2–32 Zeichen) |
+
+**Reaktion bei Überschreitung:**
+
+| Stufe | Trigger | Aktion |
+|---|---|---|
+| Soft-Limit | Limit erreicht | Warn-E-Mail an Nutzer + Admin-Benachrichtigung |
+| Hard-Limit | 2× überschritten | Code wird deaktiviert, Upgrade-Prompt |
+| API | Rate-Limit überschritten | HTTP 429 mit `Retry-After` Header |
+
+**Missbrauchsschutz (Rate-Limiting):**
+
+| Endpoint | Limit | Scope |
+|---|---|---|
+| QR-Code-Erstellung | 20/Stunde (Free: 5) | Pro User |
+| Resolver (Scans) | 100/Minute | Pro IP-Hash |
+| Suspicious Activity | >500 Codes/24h von einer IP | Admin-Flag |
+
+**AGB:** Ein rechtliches AGB-Dokument wird als statische Seite unter `/agb` (DE) und `/terms` (EN) bereitgestellt. Inhalt: Leistungsbeschreibung, Nutzerpflichten, Fair-Use-Policy mit Limits, Zahlungsbedingungen, Kündigung/Bestandsschutz, Haftungsausschluss, Datenschutz-Verweis, Gerichtsstand.
+
+**Status:** ❌ Nicht umgesetzt — keine Limits, kein Rate-Limiting, keine AGB-Seite.
+
+**Priorität:** Hoch (vor Produktivstart)
+
+---
+
+#### FEAT-09: Branding & Eigenwerbung auf Resolver-Seiten
+
+Wenn ein Scanner einen qrm.sg-QR-Code scannt und auf der Resolver-Seite landet, wird tier-abhängiges Branding eingeblendet:
+
+| Tier | Resolver-Seite |
+|---|---|
+| **Free** | "Powered by qrm.sg" Footer mit Mini-Logo + dezenter Hinweis "Create your own dynamic QR codes for free → Get started" |
+| **Pro** | Sehr dezentes qrm.sg-Logo (nur Icon, kein Werbetext) |
+| **Business** | White-Label: kein sichtbares qrm.sg-Branding |
+
+Steuerung über `qrCode.entitlementSnapshot()->plan()` im `qr-types/layout.blade.php`.
+
+**Status:** ✅ Umgesetzt — Layout, i18n DE/EN, Browser verifiziert.
+
+**Priorität:** Mittel
+
+---
+
 ## 13. Glossar
 
 | Begriff | Definition |

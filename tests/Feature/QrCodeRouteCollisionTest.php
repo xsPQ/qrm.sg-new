@@ -16,6 +16,8 @@ class QrCodeRouteCollisionTest extends TestCase
     use RefreshDatabase;
 
     private QrCodeRouteService $service;
+    /** @var int[] */
+    private array $qrCodeIds;
 
     protected function setUp(): void
     {
@@ -24,30 +26,32 @@ class QrCodeRouteCollisionTest extends TestCase
 
         $user = User::factory()->create();
 
+        $this->qrCodeIds = [];
         foreach (range(1, 10) as $i) {
-            QrCode::create([
+            $qr = QrCode::create([
                 'user_id' => $user->id,
                 'title' => "QR {$i}",
                 'type' => 'url',
                 'content' => ['url' => 'https://example.com'],
             ]);
+            $this->qrCodeIds[$i] = $qr->id;
         }
     }
 
     public function test_alias_collision_returns_409_http_status(): void
     {
-        $this->service->generateRoute(1, 'example.com', 'cool-link');
+        $this->service->generateRoute($this->qrCodeIds[1], 'example.com', 'cool-link');
 
         $this->expectException(\App\Exceptions\SlugCollisionException::class);
         $this->expectExceptionCode(409);
 
-        $this->service->generateRoute(2, 'example.com', 'cool-link');
+        $this->service->generateRoute($this->qrCodeIds[2], 'example.com', 'cool-link');
     }
 
     public function test_code_retry_exhaustion_throws(): void
     {
         $host = 'example.com';
-        $qrCodeId = 1;
+        $qrCodeId = $this->qrCodeIds[1];
 
         $this->service->generateRoute($qrCodeId, $host);
 
@@ -60,14 +64,14 @@ class QrCodeRouteCollisionTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('exhausted retries');
 
-        $mock->generateRoute(2, $host);
+        $mock->generateRoute($this->qrCodeIds[2], $host);
     }
 
     public function test_concurrent_alias_reservation_one_wins(): void
     {
         $host = 'example.com';
 
-        $route = $this->service->generateRoute(1, $host, 'winning-alias');
+        $route = $this->service->generateRoute($this->qrCodeIds[1], $host, 'winning-alias');
 
         $this->assertNotNull($route);
         $this->assertEquals('winning-alias', $route->alias);
@@ -77,7 +81,7 @@ class QrCodeRouteCollisionTest extends TestCase
             ->count());
 
         try {
-            $this->service->generateRoute(2, $host, 'winning-alias');
+            $this->service->generateRoute($this->qrCodeIds[2], $host, 'winning-alias');
             $this->fail('Expected collision exception was not thrown.');
         } catch (\App\Exceptions\SlugCollisionException $e) {
             $this->assertEquals(409, $e->getCode());
@@ -89,8 +93,8 @@ class QrCodeRouteCollisionTest extends TestCase
         $host = 'example.com';
         $codes = [];
 
-        for ($i = 0; $i < 10; $i++) {
-            $route = $this->service->generateRoute($i + 1, $host);
+        for ($i = 1; $i <= 10; $i++) {
+            $route = $this->service->generateRoute($this->qrCodeIds[$i], $host);
             $codes[] = $route->code;
         }
 
@@ -99,11 +103,11 @@ class QrCodeRouteCollisionTest extends TestCase
 
     public function test_same_code_different_hosts_allowed(): void
     {
-        $route1 = $this->service->generateRoute(1, 'example.com');
+        $route1 = $this->service->generateRoute($this->qrCodeIds[1], 'example.com');
         $code = $route1->code;
 
         QrCodeRoute::create([
-            'qr_code_id' => 2,
+            'qr_code_id' => $this->qrCodeIds[2],
             'code' => $code,
             'host' => 'other.com',
         ]);

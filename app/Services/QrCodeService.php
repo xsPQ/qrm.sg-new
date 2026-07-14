@@ -6,6 +6,14 @@ namespace App\Services;
 
 use App\Domain\Entitlement\EntitlementGate;
 use App\Domain\Entitlement\EntitlementSnapshot;
+use App\Domain\QrTypes\ContactQr;
+use App\Domain\QrTypes\CryptoQr;
+use App\Domain\QrTypes\EventQr;
+use App\Domain\QrTypes\MessageQr;
+use App\Domain\QrTypes\RedirectQr;
+use App\Domain\QrTypes\SocialQr;
+use App\Domain\QrTypes\UrlQr;
+use App\Domain\QrTypes\WifiQr;
 use App\Enums\QrCodeType;
 use App\Events\FreeTierLimitReached;
 use App\Exceptions\FreeTierLimitExceededException;
@@ -14,6 +22,8 @@ use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class QrCodeService
 {
@@ -161,6 +171,8 @@ class QrCodeService
             $this->gate->assertPasswordProtection($entitlement);
         }
 
+        $this->validateContentForType((string) $data['type'], $data['content'] ?? null);
+
         return DB::transaction(function () use ($user, $data, $entitlement) {
             $qrCode = new QrCode();
             $qrCode->user_id = $user->id;
@@ -215,9 +227,18 @@ class QrCodeService
             $this->gate->assertPasswordProtection($snapshot);
         }
 
+        if (array_key_exists('content', $data)) {
+            $typeForValidation = array_key_exists('type', $data) ? $data['type'] : $qrCode->type;
+            $this->validateContentForType($typeForValidation, $data['content'] ?? null);
+        }
+
         return DB::transaction(function () use ($qrCode, $data) {
             if (isset($data['title'])) {
                 $qrCode->title = $data['title'];
+            }
+
+            if (isset($data['type'])) {
+                $qrCode->type = $data['type'];
             }
 
             if (isset($data['content'])) {
@@ -284,6 +305,48 @@ class QrCodeService
     public function find(int $id): QrCode
     {
         return QrCode::with('route')->findOrFail($id);
+    }
+
+    /**
+     * Validate the content payload for a specific QR type.
+     *
+     * @param  mixed  $content
+     */
+    private function validateContentForType(string $type, mixed $content): void
+    {
+        if (! is_array($content)) {
+            throw ValidationException::withMessages([
+                'content' => 'The content field must be an array.',
+            ]);
+        }
+
+        $rules = $this->contentRulesForType($type);
+
+        if ($rules === []) {
+            return;
+        }
+
+        Validator::make(['content' => $content], $rules)->validate();
+    }
+
+    /**
+     * Resolve the validation rules for a QR type's content payload.
+     *
+     * @return array<string, array<int, string>>
+     */
+    private function contentRulesForType(string $type): array
+    {
+        return match ($type) {
+            QrCodeType::Url->value => UrlQr::rules(),
+            QrCodeType::Message->value => MessageQr::rules(),
+            QrCodeType::Redirect->value => RedirectQr::rules(),
+            QrCodeType::Social->value => SocialQr::rules(),
+            QrCodeType::Wifi->value => WifiQr::rules(),
+            QrCodeType::Crypto->value => CryptoQr::rules(),
+            QrCodeType::Event->value => EventQr::rules(),
+            QrCodeType::Vcard->value, 'contact' => ContactQr::rules(),
+            default => [],
+        };
     }
 
     /**

@@ -83,7 +83,7 @@ class QrScanControllerTest extends TestCase
 
     public function test_password_endpoint_redirects_to_resolve_on_success(): void
     {
-        $this->createRouteWithQrCode([
+        $route = $this->createRouteWithQrCode([
             'password_hash' => password_hash('secret123', PASSWORD_BCRYPT),
         ], [
             'code' => 'SECURE1',
@@ -94,7 +94,7 @@ class QrScanControllerTest extends TestCase
         ]);
 
         $response->assertRedirect(route('qr.resolve', 'SECURE1'));
-        $response->assertCookieNotExpired('qr_password_1');
+        $response->assertCookieNotExpired('qr_password_' . $route->qr_code_id);
     }
 
     public function test_password_endpoint_returns_error_for_wrong_password(): void

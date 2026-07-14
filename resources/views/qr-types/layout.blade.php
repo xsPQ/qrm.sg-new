@@ -20,9 +20,10 @@
         .qr-page { font-family: 'Figtree', system-ui, sans-serif; background: var(--qr-bg); min-height: 100vh; display: flex; flex-direction: column; }
         .qr-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
         .qr-card { background: white; border-radius: 1.25rem; box-shadow: 0 4px 24px rgba(0,0,0,0.06); max-width: 28rem; width: 100%; overflow: hidden; }
-        .qr-card-header { padding: 2rem 2rem 0; text-align: center; }
-        .qr-card-body { padding: 1.5rem 2rem 2rem; }
+        .qr-card-header { padding: 2.5rem 2rem 0; text-align: center; }
+        .qr-card-body { padding: 1.5rem 2rem 2.5rem; }
         .qr-icon-wrap { width: 3rem; height: 3rem; border-radius: 0.75rem; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; }
+        .qr-card-header .qr-icon-wrap { display: flex; margin-left: auto; margin-right: auto; }
         .qr-icon-wrap svg { width: 1.5rem; height: 1.5rem; }
         .qr-title { font-size: 1.5rem; font-weight: 700; color: var(--qr-text); margin-bottom: 0.25rem; }
         .qr-subtitle { font-size: 0.875rem; color: var(--qr-muted); margin-bottom: 0; }
@@ -31,8 +32,13 @@
         .qr-field-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--qr-muted); margin-bottom: 0.25rem; }
         .qr-field-value { font-size: 1rem; color: var(--qr-text); word-break: break-all; }
         .qr-mono { font-family: 'SF Mono', 'Fira Code', monospace; }
-        .qr-btn { display: block; width: 100%; text-align: center; padding: 0.75rem 1rem; border-radius: 0.625rem; font-weight: 600; font-size: 0.95rem; text-decoration: none; transition: all 0.15s; cursor: pointer; border: none; }
+        .qr-btn { display: inline-block; text-align: center; padding: 0.5rem 1.25rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.875rem; text-decoration: none; transition: all 0.15s; cursor: pointer; border: none; }
         .qr-btn:hover { opacity: 0.9; }
+        .qr-btn-primary { background: var(--qr-primary); color: white; margin-top: 0.75rem; }
+        .qr-btn-primary:hover { background: #4f46e5; opacity: 1; }
+        .qr-btn-secondary { background: transparent; color: var(--qr-primary); border: 1px solid var(--qr-primary); margin-top: 0.75rem; }
+        .qr-btn-secondary:hover { background: var(--qr-primary-light); }
+        .qr-error-actions .qr-btn { margin-top: 0; }
         .qr-btn-copy { background: var(--qr-primary-light); color: var(--qr-primary); margin-top: 0.75rem; }
         .qr-btn-copy:hover { background: #e0e7ff; }
         .qr-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
@@ -46,7 +52,7 @@
         .qr-input:focus { border-color: var(--qr-primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
         .qr-copied { animation: qr-fade 1s ease; }
         @keyframes qr-fade { 0% { opacity: 1; } 100% { opacity: 1; } }
-        @media (max-width: 640px) { .qr-card { border-radius: 1rem; } .qr-card-header { padding: 1.5rem 1.5rem 0; } .qr-card-body { padding: 1rem 1.5rem 1.5rem; } }
+        @media (max-width: 640px) { .qr-card { border-radius: 1rem; } .qr-card-header { padding: 2rem 1.5rem 0; } .qr-card-body { padding: 1.25rem 1.5rem 2rem; } }
     </style>
 </head>
 <body class="qr-page">

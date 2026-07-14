@@ -354,6 +354,51 @@ class QrCreator extends Component
     }
 
     /**
+     * Toggle gradient on/off via Livewire (style.gradient is an array).
+     */
+    public function toggleGradient(): void
+    {
+        if (!empty($this->style['gradient'])) {
+            unset($this->style['gradient']);
+        } else {
+            $this->style['gradient'] = [
+                'from' => '#6366f1',
+                'to' => '#a855f7',
+                'angle' => 45,
+            ];
+        }
+    }
+
+    /**
+     * Handle logo upload (Pro+ only).
+     */
+    public function updatedLogoUpload(): void
+    {
+        if (!$this->getCanUseLogoProperty()) {
+            return;
+        }
+
+        $this->validate([
+            'logoUpload' => 'image|mimes:png,jpeg,svg|max:1024',
+        ]);
+
+        $path = $this->logoUpload->store('logos', 'private');
+        $this->style['logo_path'] = $path;
+    }
+
+    /**
+     * Remove uploaded logo.
+     */
+    public function removeLogo(): void
+    {
+        if (!empty($this->style['logo_path'])) {
+            \Illuminate\Support\Facades\Storage::disk('private')->delete($this->style['logo_path']);
+            unset($this->style['logo_path']);
+        }
+        $this->logoUpload = null;
+    }
+
+    /**
      * The 8 in-scope creator types (Pflichtenheft §3.1).
      *
      * @return array<int,array{value:string,label:string,description:string,icon:string}>

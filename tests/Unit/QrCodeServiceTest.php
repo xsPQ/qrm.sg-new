@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\QrCodeRouteService;
 use App\Services\QrCodeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class QrCodeServiceTest extends TestCase
@@ -114,6 +115,32 @@ class QrCodeServiceTest extends TestCase
 
         $this->assertIsArray($qrCode->entitlement_snapshot);
         $this->assertEquals('free', $qrCode->entitlement_snapshot['tier']);
+    }
+
+    public function test_create_rejects_invalid_type_content(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        $this->service->create($this->user, [
+            'title' => 'Bad QR',
+            'type' => 'url',
+            'content' => ['message' => 'not-a-url'],
+        ]);
+    }
+
+    public function test_update_rejects_invalid_type_content(): void
+    {
+        $qrCode = $this->service->create($this->user, [
+            'title' => 'Original',
+            'type' => 'url',
+            'content' => ['url' => 'https://example.com'],
+        ]);
+
+        $this->expectException(ValidationException::class);
+
+        $this->service->update($qrCode, [
+            'content' => ['message' => 'wrong payload'],
+        ]);
     }
 
     public function test_update_updates_title(): void

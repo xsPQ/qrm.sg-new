@@ -183,6 +183,10 @@ class EntitlementSnapshotImmutabilityTest extends TestCase
         );
 
         $thrown = null;
+        // Wrap in a nested transaction (savepoint) so that PostgreSQL can
+        // recover from the trigger exception without aborting the outer
+        // RefreshDatabase transaction.
+        DB::beginTransaction();
         try {
             // Bypasses Eloquent entirely: no `saving` event, no model guard.
             // Only the DB-level trigger can stop this.
@@ -191,6 +195,13 @@ class EntitlementSnapshotImmutabilityTest extends TestCase
                 ->update(['entitlement_snapshot' => $downgrade]);
         } catch (Throwable $e) {
             $thrown = $e;
+            // PostgreSQL: abort the poisoned savepoint.
+            DB::rollBack();
+        }
+
+        // If no exception was thrown we need to roll back the savepoint too.
+        if ($thrown === null) {
+            DB::rollBack();
         }
 
         $this->assertNotNull(
@@ -220,11 +231,17 @@ class EntitlementSnapshotImmutabilityTest extends TestCase
         $qrCode->entitlement_snapshot = EntitlementSnapshot::forPlan(EntitlementSnapshot::PLAN_FREE)->toArray();
 
         $thrown = null;
+        DB::beginTransaction();
         try {
             // saveQuietly() bypasses the `saving` model event entirely.
             $qrCode->saveQuietly();
         } catch (Throwable $e) {
             $thrown = $e;
+            DB::rollBack();
+        }
+
+        if ($thrown === null) {
+            DB::rollBack();
         }
 
         $this->assertNotNull(
@@ -232,6 +249,7 @@ class EntitlementSnapshotImmutabilityTest extends TestCase
             'saveQuietly() change must be rejected by the DB trigger.',
         );
         $this->assertStringContainsString('immutable', strtolower($thrown->getMessage()));
+
         $this->assertSame('business', QrCode::find($qrCode->id)->entitlement_snapshot['plan']);
     }
 

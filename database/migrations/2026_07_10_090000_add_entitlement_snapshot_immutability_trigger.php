@@ -40,7 +40,7 @@ return new class extends Migration
                 AS $$
                 BEGIN
                     IF OLD.entitlement_snapshot IS NOT NULL
-                       AND NEW.entitlement_snapshot IS DISTINCT FROM OLD.entitlement_snapshot THEN
+                       AND (NEW.entitlement_snapshot::text IS DISTINCT FROM OLD.entitlement_snapshot::text) THEN
                         RAISE EXCEPTION 'entitlement_snapshot is immutable for qr_code %', OLD.id
                             USING ERRCODE = 'check_violation';
                     END IF;

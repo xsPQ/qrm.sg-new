@@ -193,15 +193,28 @@
                             @if ($aliasStatus)
                                 @php
                                     $aliasOk = $aliasStatus === 'available';
-                                    $aliasTextClass = $aliasOk ? 'text-green-600' : 'text-red-600';
+                                    $aliasIsPremium = $aliasStatus === 'premium';
+                                    $aliasTextClass = $aliasOk ? 'text-green-600' : ($aliasIsPremium ? 'text-indigo-600' : 'text-red-600');
                                     $aliasIconPath = $aliasOk
                                         ? 'M5 13l4 4L19 7'
-                                        : 'M6 18L18 6M6 6l12 12';
+                                        : ($aliasIsPremium
+                                            ? 'M5 10l-2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6'
+                                            : 'M6 18L18 6M6 6l12 12');
                                 @endphp
-                                <p class="mt-2 text-sm {{ $aliasTextClass }}">
-                                    <svg class="mr-1 inline h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $aliasIconPath }}"/></svg>
+                                <p class="mt-2 text-sm {{ $aliasTextClass }}" aria-live="polite">
+                                    <svg class="mr-1 inline h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $aliasIconPath }}"/></svg>
                                     {{ $aliasMessage }}
                                 </p>
+                                @if ($aliasIsPremium)
+                                    <button type="button"
+                                            id="premium-alias-buy"
+                                            class="mt-2 inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                                            aria-label="{{ __('Unlock this premium alias for 1.00 €') }}"
+                                            onclick="purchasePremiumAlias('{{ e($alias) }}')">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                        {{ __('Unlock for 1.00 €') }}
+                                    </button>
+                                @endif
                             @endif
                             <x-input-error :messages="$errors->get('alias')" class="mt-2" />
                             <p class="mt-1 text-xs text-gray-400">{{ $aliasHint }}</p>
@@ -225,6 +238,7 @@
                                     <div>
                                         <x-input-label for="maxScans" :value="__('Max scans (optional)')" />
                                         <x-text-input id="maxScans" type="number" wire:model="maxScans" min="1" class="mt-1 block w-full" placeholder="{{ __('unlimited') }}" />
+                                        <p class="mt-1 text-xs text-gray-400">{{ __('Deactivates the code after this many scans.') }}</p>
                                         <x-input-error :messages="$errors->get('maxScans')" class="mt-2" />
                                     </div>
                                     <div class="flex items-center gap-3 self-end pb-2">
@@ -233,11 +247,13 @@
                                             {{ __('Burn after first scan') }}
                                         </label>
                                     </div>
+                                    <p class="sm:col-span-2 -mt-2 text-xs text-gray-400">{{ __('A burn-on-scan code deactivates itself immediately after the first scan.') }}</p>
                                     @php $canUsePasswordProtection = (bool) ($features['can_use_password_protection'] ?? true); @endphp
                                     @if ($canUsePasswordProtection)
                                         <div>
                                             <x-input-label for="password" :value="__('Password protection (optional)')" />
                                             <x-text-input id="password" type="password" wire:model="password" class="mt-1 block w-full" placeholder="{{ __('Leave blank for no password') }}" autocomplete="new-password" />
+                                            <p class="mt-1 text-xs text-gray-400">{{ __('Scanners must enter this password before seeing the content.') }}</p>
                                             <x-input-error :messages="$errors->get('password')" class="mt-2" />
                                         </div>
                                     @else
@@ -249,9 +265,6 @@
                                         </div>
                                     @endif
                                     <div class="sm:col-span-2">
-                                        <p class="rounded-md bg-gray-50 p-3 text-xs text-gray-500">
-                                            {{ __('Expiry is set automatically by your plan.') }}
-                                        </p>
                                     </div>
                                 </div>
                             @endif
@@ -297,4 +310,31 @@
             </form>
         </div>
     </div>
+
+    <script>
+        function purchasePremiumAlias(alias) {
+            fetch('{{ route("billing.premium-alias.checkout") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ alias: alias }),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.url) {
+                    window.location.href = data.url;
+                } else if (data.status === 'already_owned') {
+                    window.location.reload();
+                } else if (data.status === 'taken') {
+                    alert('{{ __("This alias is already taken.") }}');
+                } else {
+                    alert(data.message || '{{ __("Could not start checkout.") }}');
+                }
+            })
+            .catch(() => alert('{{ __("Network error. Please try again.") }}'));
+        }
+    </script>
 

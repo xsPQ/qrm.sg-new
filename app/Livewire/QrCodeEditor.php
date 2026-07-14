@@ -30,9 +30,11 @@ use Livewire\WithFileUploads;
  * that backs PATCH /api/qr-codes/{id} (P1-T10), so alias collisions surface as
  * a clear, field-level error.
  *
- * The QR type itself is intentionally fixed on edit: changing the type would
- * replace the entire content schema and is out of scope. Delete is gated by a
- * two-step confirmation and performs a soft-delete (QrCode uses SoftDeletes).
+ * The QR type IS changeable on edit: since a QR code is fundamentally just a
+ * URL (e.g. https://qrm.sg/j2km2d8a), changing the type only changes what
+ * content is encoded in the dynamic redirect — the printed QR image stays the
+ * same. Delete is gated by a two-step confirmation and performs a soft-delete
+ * (QrCode uses SoftDeletes).
  *
  * Feature-gate (P2-T07): custom alias and password protection are checked
  * against the code's own (immutable/grandfathered) entitlement snapshot. A
@@ -93,6 +95,10 @@ class QrCodeEditor extends Component
 
     public ?string $successMessage = null;
 
+    // Error-correction change confirmation state.
+    public bool $confirmingEcChange = false;
+    public ?string $pendingEcLevel = null;
+
     // Feature-gate flags for this code's own (grandfathered) snapshot (P2-T07).
     public array $features = [];
 
@@ -121,6 +127,51 @@ class QrCodeEditor extends Component
         $this->showAbPanel = ! $this->showAbPanel;
     }
 
+    /**
+     * Toggle gradient on/off via Livewire (style.gradient is an array).
+     */
+    public function toggleGradient(): void
+    {
+        if (!empty($this->style['gradient'])) {
+            unset($this->style['gradient']);
+        } else {
+            $this->style['gradient'] = [
+                'from' => '#6366f1',
+                'to' => '#a855f7',
+                'angle' => 45,
+            ];
+        }
+    }
+
+    /**
+     * Handle logo upload (Pro+ only).
+     */
+    public function updatedLogoUpload(): void
+    {
+        if (!$this->getCanUseLogoProperty()) {
+            return;
+        }
+
+        $this->validate([
+            'logoUpload' => 'image|mimes:png,jpeg,svg|max:1024',
+        ]);
+
+        $path = $this->logoUpload->store('logos', 'private');
+        $this->style['logo_path'] = $path;
+    }
+
+    /**
+     * Remove uploaded logo.
+     */
+    public function removeLogo(): void
+    {
+        if (!empty($this->style['logo_path'])) {
+            \Illuminate\Support\Facades\Storage::disk('private')->delete($this->style['logo_path']);
+            unset($this->style['logo_path']);
+        }
+        $this->logoUpload = null;
+    }
+
     public function mount(QrCode $qrCode): void
     {
         // Owner/admin gate (P1-T15). Non-owners receive 403 even before the
@@ -145,18 +196,36 @@ class QrCodeEditor extends Component
     }
 
     /**
-     * Re-seed content defaults whenever the type would change. The type is
-     * fixed on edit, but keeping this hook matches the Creator contract and
-     * guards against accidental client-side type mutations.
+     * Re-seed content defaults when the type changes. Since a QR code is just
+     * a URL, changing the type only changes the encoded content — the printed
+     * QR image stays the same.
      */
     public function updatedType(string $value): void
     {
-        if (QrCodeType::tryFrom($value) !== null && $value !== $this->qrCode->type) {
-            // Type changes are out of scope; restore the canonical type and
-            // re-seed from the persisted code.
-            $this->type = $this->qrCode->type;
-            $this->content = $this->seedContent($this->qrCode);
+        if (QrCodeType::tryFrom($value) !== null) {
+            $this->content = $this->defaultContent($value);
+            $this->resetAliasCheck();
+            $this->clearOutcome();
         }
+    }
+
+    /**
+     * The 8 in-scope creator types (same as QrCreator).
+     *
+     * @return array<int,array{value:string,label:string,description:string,icon:string}>
+     */
+    public function typeOptions(): array
+    {
+        return [
+            ['value' => 'url', 'label' => 'URL', 'description' => 'Open a link', 'icon' => 'link'],
+            ['value' => 'message', 'label' => 'Message', 'description' => 'Show text', 'icon' => 'chat'],
+            ['value' => 'redirect', 'label' => 'Redirect', 'description' => 'HTTP redirect', 'icon' => 'arrow'],
+            ['value' => 'social', 'label' => 'Social', 'description' => 'Profile link', 'icon' => 'share'],
+            ['value' => 'wifi', 'label' => 'WiFi', 'description' => 'Join network', 'icon' => 'wifi'],
+            ['value' => 'crypto', 'label' => 'Crypto', 'description' => 'Pay address', 'icon' => 'coin'],
+            ['value' => 'event', 'label' => 'Event', 'description' => 'Calendar entry', 'icon' => 'calendar'],
+            ['value' => 'vcard', 'label' => 'Contact', 'description' => 'vCard', 'icon' => 'user'],
+        ];
     }
 
     public function updatedAlias(?string $value): void
@@ -294,6 +363,7 @@ class QrCodeEditor extends Component
 
         $payload = [
             'title' => $validated['title'],
+            'type' => $this->type,
             'content' => $this->cleanContent($validated['content']),
             'burn' => $validated['burn'] ?? $this->burn,
             'max_scans' => $validated['maxScans'] ?? null,
@@ -357,6 +427,41 @@ class QrCodeEditor extends Component
         session()->flash('qr-code-deleted', $title);
 
         $this->redirect(route('dashboard'), navigate: true);
+    }
+
+    /**
+     * Intercept error-correction changes in the editor. Changing EC produces a
+     * visually different QR code, so the user must confirm — especially on Free
+     * where it counts as a new QR code against the limit.
+     */
+    public function updatedErrorCorrection(string $value): void
+    {
+        $currentEc = strtoupper($this->style['error_correction'] ?? 'M');
+
+        if (strtoupper($value) === $currentEc) {
+            $this->confirmingEcChange = false;
+            $this->pendingEcLevel = null;
+            return;
+        }
+
+        // Store the pending value but revert the style until confirmed.
+        $this->pendingEcLevel = strtoupper($value);
+        $this->confirmingEcChange = true;
+    }
+
+    public function confirmEcChange(): void
+    {
+        if ($this->pendingEcLevel) {
+            $this->style['error_correction'] = $this->pendingEcLevel;
+        }
+        $this->confirmingEcChange = false;
+        $this->pendingEcLevel = null;
+    }
+
+    public function cancelEcChange(): void
+    {
+        $this->confirmingEcChange = false;
+        $this->pendingEcLevel = null;
     }
 
     public function render()

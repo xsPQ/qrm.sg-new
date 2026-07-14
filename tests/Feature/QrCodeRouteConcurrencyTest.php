@@ -15,19 +15,24 @@ class QrCodeRouteConcurrencyTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** @var int[] */
+    private array $qrCodeIds;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $user = User::factory()->create();
 
+        $this->qrCodeIds = [];
         foreach (range(1, 4) as $i) {
-            QrCode::create([
+            $qr = QrCode::create([
                 'user_id' => $user->id,
                 'title' => "QR {$i}",
                 'type' => 'url',
                 'content' => ['url' => 'https://example.com'],
             ]);
+            $this->qrCodeIds[$i] = $qr->id;
         }
     }
 
@@ -48,12 +53,12 @@ class QrCodeRouteConcurrencyTest extends TestCase
         };
 
         DB::transaction(function () use ($generateTask) {
-            $generateTask(1);
+            $generateTask($this->qrCodeIds[1]);
         });
 
-        $generateTask(2);
-        $generateTask(3);
-        $generateTask(4);
+        $generateTask($this->qrCodeIds[2]);
+        $generateTask($this->qrCodeIds[3]);
+        $generateTask($this->qrCodeIds[4]);
 
         $this->assertEmpty($errors, 'Concurrent generation produced errors: ' . implode('; ', $errors));
         $this->assertCount(4, $results);
@@ -78,9 +83,9 @@ class QrCodeRouteConcurrencyTest extends TestCase
             }
         };
 
-        $createFn(1);
-        $createFn(2);
-        $createFn(3);
+        $createFn($this->qrCodeIds[1]);
+        $createFn($this->qrCodeIds[2]);
+        $createFn($this->qrCodeIds[3]);
 
         $this->assertEquals(1, $winnerCount, 'Exactly one request should win the alias.');
         $this->assertEquals(2, $conflictCount, 'The other two requests should get 409.');

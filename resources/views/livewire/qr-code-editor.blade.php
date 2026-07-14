@@ -38,12 +38,20 @@
                         {{ __('Details') }}
                     </h3>
                     <p class="mt-1 text-xs text-gray-400">
-                        {{ __('Type cannot be changed after creation.') }}
+                        {{ __('Changing the type only changes the encoded content — your printed QR code stays the same.') }}
                     </p>
                 </div>
-                <span class="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
-                    {{ $typeLabel }}
-                </span>
+            </div>
+
+            <div>
+                <x-input-label for="type" :value="__('QR Type')" />
+                <select id="type"
+                        wire:model.live="type"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    @foreach ($this->typeOptions() as $option)
+                        <option value="{{ $option['value'] }}">{{ $option['label'] }} — {{ $option['description'] }}</option>
+                    @endforeach
+                </select>
             </div>
 
             <div>
@@ -122,10 +130,20 @@
                 </div>
 
                 @if ($aliasStatus)
-                    <p class="mt-2 text-sm {{ $aliasTextClass }}">
-                        <svg class="mr-1 inline h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $aliasIconPath }}"/></svg>
+                    @php $aliasIsPremiumEdit = $aliasStatus === 'premium'; @endphp
+                    <p class="mt-2 text-sm {{ $aliasTextClass }}" aria-live="polite">
+                        <svg class="mr-1 inline h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $aliasIconPath }}"/></svg>
                         {{ $aliasMessage }}
                     </p>
+                    @if ($aliasIsPremiumEdit)
+                        <button type="button"
+                                class="mt-2 inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                                aria-label="{{ __('Unlock this premium alias for 1.00 €') }}"
+                                onclick="purchasePremiumAlias('{{ e($alias) }}')">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            {{ __('Unlock for 1.00 €') }}
+                        </button>
+                    @endif
                 @endif
                 <x-input-error :messages="$errors->get('alias')" class="mt-2" />
                 <p class="mt-1 text-xs text-gray-400">{{ $aliasHint }}</p>
@@ -166,9 +184,6 @@
                                 <input type="checkbox" wire:model="removePassword" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                                 {{ __('Remove password protection') }}
                             </label>
-                            <p class="mt-2 rounded-md bg-gray-50 p-3 text-xs text-gray-500">
-                                {{ __('Expiry is set automatically by your plan and cannot be changed here.') }}
-                            </p>
                         </div>
                     </div>
                 @endif
@@ -176,6 +191,38 @@
 
             {{-- Design panel (M5-T04) --}}
             @include('livewire.qr-design-panel', ['isEditor' => true])
+
+            {{-- Error-correction change confirmation dialog --}}
+            @if ($confirmingEcChange)
+                <div class="rounded-md border border-amber-300 bg-amber-50 p-4">
+                    <div class="flex items-start gap-3">
+                        <svg class="h-5 w-5 shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/>
+                        </svg>
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-amber-900">
+                                {{ __('Confirm error correction change') }}
+                            </p>
+                            <p class="mt-1 text-sm text-amber-700">
+                                {{ __('Changing the error correction level produces a visually different QR code. The old code still works, but you will need to download and print the new one.') }}
+                            </p>
+                            @if (($features['plan'] ?? 'free') === 'free')
+                                <p class="mt-1 text-sm font-medium text-amber-800">
+                                    {{ __('On the Free plan, this counts as a new QR code against your limit.') }}
+                                </p>
+                            @endif
+                            <div class="mt-3 flex items-center gap-3">
+                                <x-primary-button wire:click="confirmEcChange" type="button" class="bg-amber-600 hover:bg-amber-500">
+                                    {{ __('Confirm change') }}
+                                </x-primary-button>
+                                <x-secondary-button wire:click="cancelEcChange" type="button">
+                                    {{ __('Cancel') }}
+                                </x-secondary-button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             {{-- A/B Testing section (M5-T06) — only for url/redirect --}}
             @if (in_array($qrCode->type, ['url', 'redirect']))
@@ -358,3 +405,30 @@
         </section>
     </div>
 </div>
+
+<script>
+    function purchasePremiumAlias(alias) {
+        fetch('{{ route("billing.premium-alias.checkout") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ alias: alias }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.url) {
+                window.location.href = data.url;
+            } else if (data.status === 'already_owned') {
+                window.location.reload();
+            } else if (data.status === 'taken') {
+                alert('{{ __("This alias is already taken.") }}');
+            } else {
+                alert(data.message || '{{ __("Could not start checkout.") }}');
+            }
+        })
+        .catch(() => alert('{{ __("Network error. Please try again.") }}'));
+    }
+</script>

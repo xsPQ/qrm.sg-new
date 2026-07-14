@@ -62,14 +62,26 @@ class QrCodeList extends Component
 
     /**
      * Distinct QR types offered in the type filter.
+     * Only shows types that users can actually create (excludes legacy
+     * types text/email/phone/sms/vcard that have no creator support).
      *
      * @return array<string,string>
      */
     public function typeOptions(): array
     {
-        $options = [];
+        $creatorTypes = [
+            QrCodeType::Url,
+            QrCodeType::Message,
+            QrCodeType::Redirect,
+            QrCodeType::Social,
+            QrCodeType::Wifi,
+            QrCodeType::Crypto,
+            QrCodeType::Event,
+            QrCodeType::Vcard,
+        ];
 
-        foreach (QrCodeType::cases() as $type) {
+        $options = [];
+        foreach ($creatorTypes as $type) {
             $options[$type->value] = $type->label();
         }
 

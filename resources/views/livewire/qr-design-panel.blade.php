@@ -25,15 +25,15 @@
 
     // Gradient state: the toggle is backed by the presence of $style['gradient'].
     $gradientEnabled = is_array($style['gradient'] ?? null) && !empty($style['gradient']);
-    $gradientFrom = $style['gradient']['from'] ?? '#1a1a2e';
-    $gradientTo = $style['gradient']['to'] ?? '#e94560';
-    $gradientAngle = $style['gradient']['angle'] ?? 0;
+    $gradientFrom = $style['gradient']['from'] ?? '#6366f1';
+    $gradientTo = $style['gradient']['to'] ?? '#a855f7';
+    $gradientAngle = $style['gradient']['angle'] ?? 45;
 @endphp
 
 <div class="mt-6 border-t border-gray-100 pt-6">
     @php $styleToggleIconClass = $showStylePanel ? 'h-4 w-4 transition rotate-90' : 'h-4 w-4 transition'; @endphp
     <button type="button" wire:click="$toggle('showStylePanel')" class="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
-        <svg class="{{ $styleToggleIconClass }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <svg class="{{ $styleToggleIconClass }}" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         {{ __('Design') }}
     </button>
 
@@ -91,20 +91,19 @@
                 <label for="style-ec" class="block text-sm font-medium text-gray-700">{{ __('Error correction') }}</label>
                 <select id="style-ec"
                         wire:model.live="style.error_correction"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @if($isEditor ?? false) bg-gray-100 cursor-not-allowed @endif"
-                        @if($isEditor ?? false) disabled @endif
-                        @if(!($isEditor ?? false) && ! $canUsePremiumEc) onchange="if(['Q','H'].includes(this.value)){this.value='M';}" @endif
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        @if(!($isEditor ?? false) && ! $canUsePremiumEc) onchange="if(['Q','H'].includes(this.value)){this.value='M';}" @endif>
                     @foreach ($ecLevels as $value => $label)
                         <option value="{{ $value }}"
-                                @if(in_array($value, $premiumEcLevels) && ! $canUsePremiumEc) disabled @endif
+                                @if(in_array($value, $premiumEcLevels) && ! $canUsePremiumEc) disabled @endif>
                             {{ $label }}
                             @if(in_array($value, $premiumEcLevels) && ! $canUsePremiumEc) 🔒 @endif
                         </option>
                     @endforeach
                 </select>
                 @if($isEditor ?? false)
-                    <p class="mt-1 text-xs text-gray-400">
-                        🔒 {{ __('Error correction is fixed once the QR code is created and cannot be changed afterwards.') }}
+                    <p class="mt-1 text-xs text-amber-600">
+                        ⚠️ {{ __('Changing error correction produces a new QR code image. The old code still works, but in the Free plan this counts as a new QR code against your limit.') }}
                     </p>
                 @elseif(! $canUsePremiumEc)
                     <p class="mt-1 text-xs text-gray-400">
@@ -127,17 +126,17 @@
                        class="mt-2 w-full accent-indigo-600">
             </div>
 
-            {{-- Gradient (Pro+ only) --}}
-            <div class="rounded-lg border border-gray-200 p-4 @if(! $canUseGradient) bg-gray-50 opacity-75 @endif">
+            {{-- Gradient (Pro+ only, but ALWAYS visible — disabled for Free) --}}
+            <div class="rounded-lg border border-gray-200 p-4 @if(! $canUseGradient) bg-gray-50 @endif">
                 <div class="flex items-center justify-between">
                     <label class="flex items-center gap-2 text-sm font-medium @if(! $canUseGradient) text-gray-400 @else text-gray-700 @endif">
                         @if($canUseGradient)
                             <input type="checkbox"
-                                   wire:click="$toggle('style.gradient')"
+                                   wire:click="toggleGradient"
                                    @if($gradientEnabled) checked @endif
                                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                         @else
-                            <span class="text-base">🔒</span>
+                            <span class="text-base" aria-hidden="true">🔒</span>
                         @endif
                         {{ __('Gradient') }}
                     </label>
@@ -185,17 +184,19 @@
                 @endif
             </div>
 
-            {{-- Logo upload (Pro+ only) --}}
-            <div class="rounded-lg border border-gray-200 p-4 @if(! $canUseLogo) bg-gray-50 opacity-75 @endif">
-                <label class="flex items-center gap-2 text-sm font-medium @if(! $canUseLogo) text-gray-400 @else text-gray-700 @endif">
-                    @if(! $canUseLogo)
-                        <span class="text-base">🔒</span>
-                    @endif
-                    {{ __('Logo') }}
+            {{-- Logo upload (Pro+ only, but ALWAYS visible — disabled for Free) --}}
+            <div class="rounded-lg border border-gray-200 p-4 @if(! $canUseLogo) bg-gray-50 @endif">
+                <div class="flex items-center justify-between">
+                    <label class="flex items-center gap-2 text-sm font-medium @if(! $canUseLogo) text-gray-400 @else text-gray-700 @endif">
+                        @if(! $canUseLogo)
+                            <span class="text-base" aria-hidden="true">🔒</span>
+                        @endif
+                        {{ __('Logo') }}
+                    </label>
                     @if(! $canUseLogo)
                         <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">Pro</span>
                     @endif
-                </label>
+                </div>
 
                 @if($canUseLogo)
                     @if(! empty($style['logo_path']))
@@ -216,9 +217,63 @@
                         <div wire:loading wire:target="logoUpload" class="mt-2 text-sm text-indigo-600">{{ __('Uploading…') }}</div>
                     @endif
                 @else
-                    <p class="mt-2 text-xs text-gray-400">
-                        {{ __('Embed your logo in the center of the QR code.') }}
-                        <a href="{{ route('account') }}" class="text-indigo-600 underline hover:text-indigo-500">{{ __('Upgrade to Pro') }}</a>
+                    <div class="mt-2">
+                        <input type="file"
+                               disabled
+                               class="block w-full cursor-not-allowed text-sm text-gray-400 file:mr-4 file:rounded-md file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-gray-400">
+                        <p class="mt-1 text-xs text-gray-400">
+                            {{ __('Embed your logo in the center of the QR code.') }}
+                            <a href="{{ route('account') }}" class="text-indigo-600 underline hover:text-indigo-500">{{ __('Upgrade to Pro') }}</a>
+                        </p>
+                    </div>
+                @endif
+            </div>
+
+            {{-- Expiry: two modes — service end (plan default) or custom date --}}
+            <div class="rounded-lg border border-gray-200 p-4">
+                <label class="flex items-center gap-2 text-sm font-medium text-gray-700">
+                    {{ __('Expiry') }}
+                </label>
+                @php
+                    $isFree = ($features['is_free'] ?? true);
+                    $currentExpiry = $qrCode->expires_at ?? null;
+                    $hasCustomExpiry = false; // custom date expiry not yet persisted
+                @endphp
+
+                @if($isFree)
+                    {{-- Free plan: fixed 30-day expiry, upgrade to remove --}}
+                    <div class="mt-2 flex items-center gap-3">
+                        <input type="text"
+                               disabled
+                               value="{{ __('30 days after creation (Free plan)') }}"
+                               class="block w-full cursor-not-allowed rounded-md border-gray-200 bg-gray-50 text-sm text-gray-400">
+                    </div>
+                    <p class="mt-1 text-xs text-gray-400">
+                        🔒 <span class="font-semibold text-indigo-600">Pro</span>
+                        — {{__('QR codes never expire on Pro and Business plans, or set a custom expiry date.')}}
+                        <a href="{{ route('account') }}" class="text-indigo-600 underline hover:text-indigo-500">{{ __('Upgrade') }}</a>
+                    </p>
+                @else
+                    {{-- Paid plan: choose between no expiry (service end) or a custom date --}}
+                    <div class="mt-2 space-y-2">
+                        <label class="flex items-center gap-2 text-sm text-gray-700">
+                            <input type="radio" name="expiry_mode" value="none" checked
+                                   class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                            {{ __('Until service end (no expiry)') }}
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700">
+                            <input type="radio" name="expiry_mode" value="date"
+                                   class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                            {{ __('Until specific date') }}
+                        </label>
+                        <input type="date"
+                               name="expires_at"
+                               disabled
+                               class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                               placeholder="{{ __('Select date') }}">
+                    </div>
+                    <p class="mt-1 text-xs text-gray-400">
+                        {{ __('Choose whether this QR code expires at the end of your service or on a specific date.') }}
                     </p>
                 @endif
             </div>

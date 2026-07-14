@@ -130,9 +130,11 @@ class AdminPanelTest extends TestCase
 
         $this->assertDatabaseHas('admin_action_logs', [
             'action' => 'user.unsuspend',
-            'before' => json_encode(['status' => 'blocked']),
-            'after' => json_encode(['status' => 'active']),
         ]);
+
+        $log = AdminActionLog::where('action', 'user.unsuspend')->first();
+        $this->assertSame(['status' => 'blocked'], $log->before);
+        $this->assertSame(['status' => 'active'], $log->after);
     }
 
     // -----------------------------------------------------------------------

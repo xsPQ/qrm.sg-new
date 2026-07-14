@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\QrCodeType;
 use App\Livewire\QrCodeList;
 use App\Models\QrCode;
 use App\Models\QrCodeRoute;
@@ -263,8 +264,25 @@ class QrCodeListLivewireTest extends TestCase
     {
         $component = Livewire::actingAs(User::factory()->create())->test(QrCodeList::class);
 
-        foreach (\App\Enums\QrCodeType::cases() as $type) {
+        // The filter only shows the 8 types the Creator offers (UX-P3-03)
+        $creatorTypes = [
+            QrCodeType::Url,
+            QrCodeType::Message,
+            QrCodeType::Redirect,
+            QrCodeType::Social,
+            QrCodeType::Wifi,
+            QrCodeType::Crypto,
+            QrCodeType::Event,
+            QrCodeType::Vcard,
+        ];
+
+        foreach ($creatorTypes as $type) {
             $component->assertSee($type->label(), false);
         }
+
+        // Legacy types should NOT appear
+        $this->assertStringNotContainsString('Email', $component->html());
+        $this->assertStringNotContainsString('Phone', $component->html());
+        $this->assertStringNotContainsString('SMS', $component->html());
     }
 }

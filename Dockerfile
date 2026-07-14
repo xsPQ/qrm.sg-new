@@ -1,4 +1,4 @@
-FROM php:8.3-fpm-alpine
+FROM php:8.4-fpm-alpine
 
 LABEL maintainer="qrm.sg"
 
@@ -53,6 +53,12 @@ COPY docker/php.ini /usr/local/etc/php/conf.d/qrm.ini
 # Entrypoint
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Ensure www-data exists and owns the app directory
+RUN set -x \
+    && addgroup -g 82 -S www-data 2>/dev/null || true \
+    && adduser -u 82 -D -S -G www-data www-data 2>/dev/null || true \
+    && chown -R www-data:www-data /var/www/qrm.sg
 
 WORKDIR /var/www/qrm.sg
 

@@ -3,6 +3,9 @@
 .env
 .env.backup
 .env.production
+.env.docker
+.env.docker-backup
+docker/allinone/.env.docker
 
 # Backup artifacts (never commit dumps/manifests/logs)
 /backups/

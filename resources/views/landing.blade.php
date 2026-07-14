@@ -299,6 +299,100 @@
         </div>
     </section>
 
+    {{-- Vergleichstabelle (UX-P2-03) --}}
+    <section class="comparison-section" style="padding: 4rem 1.5rem; background: #f8fafc;">
+        <div class="container" style="max-width: 56rem; margin: 0 auto;">
+            <h2 class="section-title" style="text-align: center; font-size: 1.875rem; font-weight: 700; margin-bottom: 0.5rem;">Plan-Vergleich</h2>
+            <p class="section-sub" style="text-align: center; color: #64748b; margin-bottom: 2rem;">Alle Funktionen im Überblick</p>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 0.75rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <thead>
+                        <tr style="background: #f1f5f9;">
+                            <th style="text-align: left; padding: 1rem 1.25rem; font-size: 0.875rem; font-weight: 600; color: #475569;">Funktion</th>
+                            <th style="text-align: center; padding: 1rem 1.25rem; font-size: 0.875rem; font-weight: 600; color: #475569;">Free</th>
+                            <th style="text-align: center; padding: 1rem 1.25rem; font-size: 0.875rem; font-weight: 600; color: #4f46e5;">Pro</th>
+                            <th style="text-align: center; padding: 1rem 1.25rem; font-size: 0.875rem; font-weight: 600; color: #475569;">Business</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 0.75rem 1.25rem; font-size: 0.875rem;">Aktive QR-Codes</td>
+                            <td style="text-align: center; padding: 0.75rem; font-size: 0.875rem;">10</td>
+                            <td style="text-align: center; padding: 0.75rem; font-size: 0.875rem; font-weight: 600;">∞</td>
+                            <td style="text-align: center; padding: 0.75rem; font-size: 0.875rem; font-weight: 600;">∞</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #fafbfc;">
+                            <td style="padding: 0.75rem 1.25rem; font-size: 0.875rem;">Gültigkeit</td>
+                            <td style="text-align: center; padding: 0.75rem; font-size: 0.875rem;">30 Tage</td>
+                            <td style="text-align: center; padding: 0.75rem; font-size: 0.875rem; font-weight: 600;">Unbegrenzt</td>
+                            <td style="text-align: center; padding: 0.75rem; font-size: 0.875rem; font-weight: 600;">Unbegrenzt</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 0.75rem 1.25rem; font-size: 0.875rem;">QR-Typen</td>
+                            <td style="text-align: center; padding: 0.75rem; font-size: 0.875rem;">Alle 8</td>
+                            <td style="text-align: center; padding: 0.75rem; font-size: 0.875rem;">Alle 8</td>
+                            <td style="text-align: center; padding: 0.75rem; font-size: 0.875rem;">Alle 8</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #fafbfc;">
+                            <td style="padding: 0.75rem 1.25rem; font-size: 0.875rem;">Analytics</td>
+                            <td style="text-align: center; padding: 0.75rem; font-size: 0.875rem;">Basis</td>
+                            <td style="text-align: center; padding: 0.75rem; font-size: 0.875rem; font-weight: 600;">Vollständig</td>
+                            <td style="text-align: center; padding: 0.75rem; font-size: 0.875rem; font-weight: 600;">Vollständig</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 0.75rem 1.25rem; font-size: 0.875rem;">Custom Alias</td>
+                            <td style="text-align: center; padding: 0.75rem;">✗</td>
+                            <td style="text-align: center; padding: 0.75rem; font-weight: 600; color: #16a34a;">✓</td>
+                            <td style="text-align: center; padding: 0.75rem; font-weight: 600; color: #16a34a;">✓</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #fafbfc;">
+                            <td style="padding: 0.75rem 1.25rem; font-size: 0.875rem;">Passwortschutz</td>
+                            <td style="text-align: center; padding: 0.75rem;">✗</td>
+                            <td style="text-align: center; padding: 0.75rem; font-weight: 600; color: #16a34a;">✓</td>
+                            <td style="text-align: center; padding: 0.75rem; font-weight: 600; color: #16a34a;">✓</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 0.75rem 1.25rem; font-size: 0.875rem;">Design (Farben, Logo, Gradient)</td>
+                            <td style="text-align: center; padding: 0.75rem;">✗</td>
+                            <td style="text-align: center; padding: 0.75rem; font-weight: 600; color: #16a34a;">✓</td>
+                            <td style="text-align: center; padding: 0.75rem; font-weight: 600; color: #16a34a;">✓</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #fafbfc;">
+                            <td style="padding: 0.75rem 1.25rem; font-size: 0.875rem;">Kein Branding</td>
+                            <td style="text-align: center; padding: 0.75rem;">✗</td>
+                            <td style="text-align: center; padding: 0.75rem; font-weight: 600; color: #16a34a;">✓</td>
+                            <td style="text-align: center; padding: 0.75rem; font-weight: 600; color: #16a34a;">✓</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 0.75rem 1.25rem; font-size: 0.875rem;">Eigene Domain</td>
+                            <td style="text-align: center; padding: 0.75rem;">✗</td>
+                            <td style="text-align: center; padding: 0.75rem;">✗</td>
+                            <td style="text-align: center; padding: 0.75rem; font-weight: 600; color: #16a34a;">✓</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #fafbfc;">
+                            <td style="padding: 0.75rem 1.25rem; font-size: 0.875rem;">REST API</td>
+                            <td style="text-align: center; padding: 0.75rem;">✗</td>
+                            <td style="text-align: center; padding: 0.75rem;">✗</td>
+                            <td style="text-align: center; padding: 0.75rem; font-weight: 600; color: #16a34a;">✓</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 0.75rem 1.25rem; font-size: 0.875rem;">Team-Verwaltung</td>
+                            <td style="text-align: center; padding: 0.75rem;">✗</td>
+                            <td style="text-align: center; padding: 0.75rem;">✗</td>
+                            <td style="text-align: center; padding: 0.75rem; font-weight: 600; color: #16a34a;">✓</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem 1.25rem; font-size: 0.875rem;">Bulk-Import/Export</td>
+                            <td style="text-align: center; padding: 0.75rem;">✗</td>
+                            <td style="text-align: center; padding: 0.75rem;">✗</td>
+                            <td style="text-align: center; padding: 0.75rem; font-weight: 600; color: #16a34a;">✓</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
     <footer class="footer">
         <div class="footer-inner">
             <div>

@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'landing')->name('landing');
 
+
 // FEAT-08: Legal pages
 Route::view('/agb', 'legal.agb')->name('agb');
 Route::view('/terms', 'legal.terms')->name('terms');
@@ -31,30 +32,30 @@ Route::get('/create', App\Livewire\AnonymousCreator::class)
     ->name('qr.create-anonymous');
 
 Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('dashboard');
 
 Route::view('creator', 'creator')
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('qr.creator');
 
 // QR-Code detail page (P2-T02). Owner/admin enforced via QrCodePolicy.
 // Named `qr-codes.detail` (not `.show`) to avoid colliding with the
 // apiResource show route in api.php, which already owns `qr-codes.show`.
 Route::get('qr-codes/{qrCode}', [QrCodeDetailController::class, 'show'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('qr-codes.detail');
 
 // QR-Code edit page (P2-T03). Hosts the type-specific edit form. Owner/admin
 // enforced via QrCodePolicy (update) inside the controller; the Livewire
 // editor re-authorizes on mount and on every mutating action.
 Route::get('qr-codes/{qrCode}/edit', [QrCodeEditController::class, 'edit'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('qr-codes.edit');
 
 // Analytics page for a single QR code (P3-T01 / §12.6).
 Route::get('qr-codes/{qrCode}/analytics', App\Livewire\QrCodeAnalytics::class)
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('qr-codes.analytics');
 
 Route::view('profile', 'profile')

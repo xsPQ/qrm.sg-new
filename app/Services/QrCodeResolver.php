@@ -219,13 +219,13 @@ class QrCodeResolver
             'UPDATE qr_codes
                 SET scan_count = scan_count + 1,
                     status = CASE
-                        WHEN burn = 1 THEN ?
+                        WHEN burn = ? THEN ?
                         WHEN max_scans IS NOT NULL AND (scan_count + 1) >= max_scans THEN ?
                         ELSE status
                     END,
                     updated_at = ?
                 WHERE id = ? AND status = ?',
-            ['burned', 'burned', now(), $qrCode->id, 'active'],
+            [true, 'burned', 'burned', now(), $qrCode->id, 'active'],
         );
 
         return $affected > 0;

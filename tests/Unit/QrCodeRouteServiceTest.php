@@ -17,6 +17,8 @@ class QrCodeRouteServiceTest extends TestCase
     use RefreshDatabase;
 
     private QrCodeRouteService $service;
+    private int $qrCodeId1;
+    private int $qrCodeId2;
 
     protected function setUp(): void
     {
@@ -25,14 +27,21 @@ class QrCodeRouteServiceTest extends TestCase
 
         $user = User::factory()->create();
 
-        foreach (range(1, 2) as $i) {
-            QrCode::create([
-                'user_id' => $user->id,
-                'title' => "QR {$i}",
-                'type' => 'url',
-                'content' => ['url' => 'https://example.com'],
-            ]);
-        }
+        $qr1 = QrCode::create([
+            'user_id' => $user->id,
+            'title' => 'QR 1',
+            'type' => 'url',
+            'content' => ['url' => 'https://example.com'],
+        ]);
+        $qr2 = QrCode::create([
+            'user_id' => $user->id,
+            'title' => 'QR 2',
+            'type' => 'url',
+            'content' => ['url' => 'https://example.com'],
+        ]);
+
+        $this->qrCodeId1 = $qr1->id;
+        $this->qrCodeId2 = $qr2->id;
     }
 
     public function test_reserved_paths_list_is_accessible(): void
@@ -134,10 +143,10 @@ class QrCodeRouteServiceTest extends TestCase
 
     public function test_generate_route_creates_record_with_code(): void
     {
-        $route = $this->service->generateRoute(1, 'example.com');
+        $route = $this->service->generateRoute($this->qrCodeId1, 'example.com');
 
         $this->assertInstanceOf(QrCodeRoute::class, $route);
-        $this->assertEquals(1, $route->qr_code_id);
+        $this->assertEquals($this->qrCodeId1, $route->qr_code_id);
         $this->assertEquals('example.com', $route->host);
         $this->assertNotNull($route->code);
         $this->assertEquals(6, strlen($route->code));
@@ -147,7 +156,7 @@ class QrCodeRouteServiceTest extends TestCase
 
     public function test_generate_route_with_valid_alias(): void
     {
-        $route = $this->service->generateRoute(1, 'example.com', 'my-link');
+        $route = $this->service->generateRoute($this->qrCodeId1, 'example.com', 'my-link');
 
         $this->assertEquals('my-link', $route->alias);
         $this->assertNotNull($route->code);
@@ -158,49 +167,49 @@ class QrCodeRouteServiceTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('reserved system path');
 
-        $this->service->generateRoute(1, 'example.com', 'admin');
+        $this->service->generateRoute($this->qrCodeId1, 'example.com', 'admin');
     }
 
     public function test_alias_collision_different_host_allowed(): void
     {
-        $this->service->generateRoute(1, 'example.com', 'my-link');
+        $this->service->generateRoute($this->qrCodeId1, 'example.com', 'my-link');
 
-        $this->service->generateRoute(2, 'other.com', 'my-link');
+        $this->service->generateRoute($this->qrCodeId2, 'other.com', 'my-link');
 
         $this->assertDatabaseCount('qr_code_routes', 2);
     }
 
     public function test_alias_collision_same_host_throws(): void
     {
-        $this->service->generateRoute(1, 'example.com', 'my-link');
+        $this->service->generateRoute($this->qrCodeId1, 'example.com', 'my-link');
 
         $this->expectException(SlugCollisionException::class);
         $this->expectExceptionMessage('already taken');
 
-        $this->service->generateRoute(2, 'example.com', 'my-link');
+        $this->service->generateRoute($this->qrCodeId2, 'example.com', 'my-link');
     }
 
     public function test_alias_collision_case_insensitive(): void
     {
-        $this->service->generateRoute(1, 'example.com', 'my-link');
+        $this->service->generateRoute($this->qrCodeId1, 'example.com', 'my-link');
 
         $this->expectException(SlugCollisionException::class);
         $this->expectExceptionMessage('already taken');
 
-        $this->service->generateRoute(2, 'example.com', 'MY-LINK');
+        $this->service->generateRoute($this->qrCodeId2, 'example.com', 'MY-LINK');
     }
 
     public function test_code_generation_no_collision_across_hosts(): void
     {
-        $route1 = $this->service->generateRoute(1, 'example.com');
-        $route2 = $this->service->generateRoute(2, 'other.com');
+        $route1 = $this->service->generateRoute($this->qrCodeId1, 'example.com');
+        $route2 = $this->service->generateRoute($this->qrCodeId2, 'other.com');
 
         $this->assertNotEquals($route1->code, $route2->code);
     }
 
     public function test_assign_alias_updates_route(): void
     {
-        $route = $this->service->generateRoute(1, 'example.com');
+        $route = $this->service->generateRoute($this->qrCodeId1, 'example.com');
         $this->assertNull($route->alias);
 
         $updated = $this->service->assignAlias($route, 'cool-link');
@@ -210,7 +219,7 @@ class QrCodeRouteServiceTest extends TestCase
 
     public function test_assign_alias_same_value_noop(): void
     {
-        $route = $this->service->generateRoute(1, 'example.com', 'my-link');
+        $route = $this->service->generateRoute($this->qrCodeId1, 'example.com', 'my-link');
         $updated = $this->service->assignAlias($route, 'MY-LINK');
 
         $this->assertEquals('my-link', $updated->alias);
@@ -218,8 +227,8 @@ class QrCodeRouteServiceTest extends TestCase
 
     public function test_assign_alias_collision_throws(): void
     {
-        $this->service->generateRoute(1, 'example.com', 'taken-link');
-        $route2 = $this->service->generateRoute(2, 'example.com');
+        $this->service->generateRoute($this->qrCodeId1, 'example.com', 'taken-link');
+        $route2 = $this->service->generateRoute($this->qrCodeId2, 'example.com');
 
         $this->expectException(SlugCollisionException::class);
         $this->service->assignAlias($route2, 'taken-link');
@@ -227,7 +236,7 @@ class QrCodeRouteServiceTest extends TestCase
 
     public function test_remove_alias_sets_null(): void
     {
-        $route = $this->service->generateRoute(1, 'example.com', 'my-link');
+        $route = $this->service->generateRoute($this->qrCodeId1, 'example.com', 'my-link');
         $this->assertEquals('my-link', $route->alias);
 
         $updated = $this->service->removeAlias($route);
@@ -237,7 +246,7 @@ class QrCodeRouteServiceTest extends TestCase
 
     public function test_find_by_code_returns_correct_route(): void
     {
-        $route = $this->service->generateRoute(1, 'example.com');
+        $route = $this->service->generateRoute($this->qrCodeId1, 'example.com');
         $found = $this->service->findByCode($route->code, 'example.com');
 
         $this->assertNotNull($found);
@@ -246,7 +255,7 @@ class QrCodeRouteServiceTest extends TestCase
 
     public function test_find_by_code_case_insensitive(): void
     {
-        $route = $this->service->generateRoute(1, 'example.com');
+        $route = $this->service->generateRoute($this->qrCodeId1, 'example.com');
         $found = $this->service->findByCode(strtolower($route->code), 'example.com');
 
         $this->assertNotNull($found);
@@ -255,7 +264,7 @@ class QrCodeRouteServiceTest extends TestCase
 
     public function test_find_by_code_wrong_host_returns_null(): void
     {
-        $route = $this->service->generateRoute(1, 'example.com');
+        $route = $this->service->generateRoute($this->qrCodeId1, 'example.com');
         $found = $this->service->findByCode($route->code, 'other.com');
 
         $this->assertNull($found);
@@ -263,7 +272,7 @@ class QrCodeRouteServiceTest extends TestCase
 
     public function test_find_by_alias_returns_correct_route(): void
     {
-        $this->service->generateRoute(1, 'example.com', 'my-link');
+        $this->service->generateRoute($this->qrCodeId1, 'example.com', 'my-link');
         $found = $this->service->findByAlias('my-link', 'example.com');
 
         $this->assertNotNull($found);
@@ -272,7 +281,7 @@ class QrCodeRouteServiceTest extends TestCase
 
     public function test_find_by_alias_case_insensitive(): void
     {
-        $this->service->generateRoute(1, 'example.com', 'my-link');
+        $this->service->generateRoute($this->qrCodeId1, 'example.com', 'my-link');
         $found = $this->service->findByAlias('MY-LINK', 'example.com');
 
         $this->assertNotNull($found);
@@ -286,13 +295,13 @@ class QrCodeRouteServiceTest extends TestCase
 
     public function test_is_code_available_returns_false_for_used_code(): void
     {
-        $route = $this->service->generateRoute(1, 'example.com');
+        $route = $this->service->generateRoute($this->qrCodeId1, 'example.com');
         $this->assertFalse($this->service->isCodeAvailable($route->code, 'example.com'));
     }
 
     public function test_is_code_available_excludes_given_id(): void
     {
-        $route = $this->service->generateRoute(1, 'example.com');
+        $route = $this->service->generateRoute($this->qrCodeId1, 'example.com');
         $this->assertTrue($this->service->isCodeAvailable($route->code, 'example.com', $route->id));
     }
 
@@ -300,7 +309,7 @@ class QrCodeRouteServiceTest extends TestCase
     {
         $this->assertTrue($this->service->isAliasAvailable('my-link', 'example.com'));
 
-        $this->service->generateRoute(1, 'example.com', 'my-link');
+        $this->service->generateRoute($this->qrCodeId1, 'example.com', 'my-link');
         $this->assertFalse($this->service->isAliasAvailable('my-link', 'example.com'));
     }
 }

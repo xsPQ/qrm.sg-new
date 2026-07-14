@@ -138,7 +138,7 @@ Die zentrale Funktion der Plattform. Über ein webbasiertes Formular erstellt de
 | `content` | JSONB | Ja | — | Typ-spezifische Daten |
 | `alias` | String | Nein | `null` | Custom Alias für Pro/Business, nach Normalisierung 3–32 Zeichen, global eindeutig im gemeinsamen Pfadnamensraum und kein reservierter Systempfad |
 | `password` | String | Nein | `null` | Passwortschutz (Pro/Business) |
-| `expires_at` | ISO 8601 | Nein | Planabhängig | Free: wird serverseitig unveränderlich auf exakt 30 Tage ab Erstellung gesetzt; Pro/Business: `null` = unbegrenzt oder frei wählbares zukünftiges Ablaufdatum |
+| `expires_at` | ISO 8601 | Nein | Planabhängig | Free: wird serverseitig unveränderlich auf exakt 30 Tage ab Erstellung gesetzt; Pro/Business: zwei Modi — `null` = unbegrenzt (bis Service-Ende) oder frei wählbares zukünftiges Ablaufdatum |
 | `burn` | Boolean | Nein | `false` | Einmal-Nutzung: genau eine Resolver-Auslieferung, danach deaktiviert |
 | `max_scans` | Integer | Nein | `null` | Maximale Scans, `null` = unbegrenzt |
 
@@ -411,7 +411,9 @@ Der Stripe-Webhook aktualisiert somit den aktuellen Account-Tarif, darf aber nie
 |---|---|
 | QR-Code-Liste | Übersicht aller eigenen QR-Codes mit Status, Plan-Hinweisen und letzter Aktivität |
 | QR-Code-Detail | Einzelansicht mit Inhalt, Einstellungen, Download und Statistiken |
-| Bearbeiten | Inhalt und Einstellungen ändern |
+| Bearbeiten | Inhalt, Einstellungen und QR-Typ ändern; Fehlerkorrektur änderbar mit Bestätigungshinweis (neues QR-Bild) |
+
+**QR-Typ-Wechsel im Edit-Modus:** Da jeder QR-Code ausschließlich die Resolver-URL kodert (Kanonische Nutzlastregel, §3.1.1), ist der QR-Typ nachträglich änderbar. Ein Wechsel des Typs ändert nur den codierten Inhalt (was hinter der URL liegt), nicht aber das gedruckte QR-Bild. Die typspezifischen Formularfelder werden beim Wechsel neu geladen; der bisherige Inhalt wird durch typspezifische Standardwerte ersetzt.
 | Löschen | QR-Code entfernen |
 | Analytics | Scan-Statistiken je QR-Code |
 | Account | Profil, Passwort, E-Mail-Verifikation, Tarif, Abrechnung |
@@ -1720,13 +1722,13 @@ Die folgenden drei Bugs wurden bei manuellem Testing identifiziert und müssen v
 - Feature-Test schreiben, der `restoreRevision()` als Livewire-Call aufruft und alle vier Felder (title, content, settings, status) nach der Wiederherstellung verifiziert.
 - Edge-Case: Snapshot ohne status-Feld (alte Revisionen) → Status bleibt unverändert.
 
-#### BUG-FIX-03: Fehlerkorrektur-Level im Editor read-only
+#### BUG-FIX-03: Fehlerkorrektur-Level im Editor mit Bestätigung
 
 **Symptom:** Das visuelle Design-Panel (`qr-design-panel.blade.php`) ist shared zwischen Creator und Editor. Die Fehlerkorrektur (Error Correction Level: L/M/Q/H) ist über `wire:model.live="style.error_correction"` im Editor veränderbar.
 
-**Warum das ein Bug ist:** Die Fehlerkorrektur ist eine Eigenschaft des QR-Bildes selbst. Ein einmal generiertes und insbesondere gedrucktes QR-Bild hat ein festes ECC-Level. Eine nachträgliche Änderung im Editor ändert nur den Datenbankeintrag, nicht aber das bereits auslieferbare QR-Bild — der Nutzer bekommt fälschlicherweise den Eindruck, das gedruckte Bild zu verändern.
+**Problem:** Eine Änderung der Fehlerkorrektur erzeugt ein visuell anderes QR-Bild. Da der QR-Code nur die Resolver-URL kodiert (z. B. `https://qrm.sg/a7f3x2`), funktioniert der alte Code weiterhin. Es entsteht aber ein neues QR-Bild, das neu heruntergeladen und gedruckt werden muss. Im Free-Tier zählt dies als neuer QR-Code gegen das Limit.
 
-**Lösung:** Das Error-Correction-Dropdown im Editor deaktivieren (`disabled`, visuell als "gesperrt" markiert mit Tooltip/Hinweis). Nur im Creator ist die Auswahl aktiv. Die Logik dafür wird im shared `qr-design-panel.blade.php` über eine Bedingung gesteuert (z. B. `$isEditor` Flag).
+**Lösung:** Das Error-Correction-Dropdown im Editor ist aktiviert. Bei einer Änderung erscheint ein Bestätigungsdialog (amber warning box) mit Hinweis: "Changing the error correction level produces a visually different QR code. The old code still works, but you will need to download and print the new one." Für Free-Nutzer wird zusätzlich gewarnt: "On the Free plan, this counts as a new QR code against your limit." Die Änderung wird erst nach expliziter Bestätigung (`confirmEcChange`) übernommen; bis dahin bleibt der alte Wert aktiv (`cancelEcChange`).
 
 ## 13. Glossar
 

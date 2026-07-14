@@ -33,7 +33,7 @@ class QrCodeRevisionTest extends TestCase
             'user_id' => $user->id,
             'title' => 'Original Title',
             'type' => 'message',
-            'content' => ['title' => 'Msg', 'body' => 'Original content'],
+            'content' => ['message' => 'Original content'],
             'settings' => ['style' => []],
             'status' => 'active',
             'entitlement_snapshot' => EntitlementSnapshot::forPlan('pro')->toArray(),
@@ -65,13 +65,13 @@ class QrCodeRevisionTest extends TestCase
         $this->actingAs($user);
 
         $qrCode->update([
-            'content' => ['title' => 'Msg', 'body' => 'Updated content'],
+            'content' => ['message' => 'Updated content'],
         ]);
 
         $revision = QrCodeRevision::first();
 
         $this->assertNotNull($revision);
-        $this->assertEquals('Original content', $revision->snapshot['content']['body']);
+        $this->assertEquals('Original content', $revision->snapshot['content']['message']);
         $this->assertStringContainsString('content', $revision->change_summary);
     }
 
@@ -141,12 +141,12 @@ class QrCodeRevisionTest extends TestCase
         // Original content: body = "Original content"
         // Edit 1: change to "Updated content"
         $qrCode->update([
-            'content' => ['title' => 'Msg', 'body' => 'Updated content'],
+            'content' => ['message' => 'Updated content'],
         ]);
 
         // The revision captured the PREVIOUS state (Original content)
         $revision = QrCodeRevision::first();
-        $this->assertEquals('Original content', $revision->snapshot['content']['body']);
+        $this->assertEquals('Original content', $revision->snapshot['content']['message']);
 
         // Restore: apply the revision's snapshot back to the QR code
         $qrCode->update([
@@ -157,7 +157,7 @@ class QrCodeRevisionTest extends TestCase
 
         // The QR code should now have the original content back
         $qrCode->refresh();
-        $this->assertEquals('Original content', $qrCode->content['body']);
+        $this->assertEquals('Original content', $qrCode->content['message']);
     }
 
     public function test_revisions_are_deleted_when_qr_code_is_force_deleted(): void
@@ -181,13 +181,13 @@ class QrCodeRevisionTest extends TestCase
         $this->actingAs($user);
 
         $qrCode->update([
-            'content' => ['title' => 'Msg', 'body' => 'New body text'],
+            'content' => ['message' => 'New body text'],
         ]);
 
         $revision = QrCodeRevision::first();
 
         $this->assertStringContainsString('content', $revision->change_summary);
-        $this->assertStringContainsString('body', $revision->change_summary);
+        $this->assertStringContainsString('message', $revision->change_summary);
     }
 
     public function test_restore_revision_via_livewire_restores_all_fields(): void
@@ -199,7 +199,7 @@ class QrCodeRevisionTest extends TestCase
         // Change title, content, settings and status.
         $qrCode->update([
             'title' => 'After Edit',
-            'content' => ['title' => 'Msg', 'body' => 'Changed'],
+            'content' => ['message' => 'Changed'],
             'settings' => ['style' => ['fg_color' => '#ff0000']],
             'status' => 'paused',
         ]);
@@ -218,7 +218,7 @@ class QrCodeRevisionTest extends TestCase
         // Assert all four tracked fields are restored.
         $qrCode->refresh();
         $this->assertEquals('Original Title', $qrCode->title);
-        $this->assertEquals('Original content', $qrCode->content['body']);
+        $this->assertEquals('Original content', $qrCode->content['message']);
         $this->assertEquals('active', $qrCode->status);
     }
 
@@ -230,7 +230,7 @@ class QrCodeRevisionTest extends TestCase
 
         // Create a revision by changing content.
         $qrCode->update([
-            'content' => ['title' => 'Msg', 'body' => 'Changed'],
+            'content' => ['message' => 'Changed'],
         ]);
 
         $revision = QrCodeRevision::first();
@@ -257,7 +257,7 @@ class QrCodeRevisionTest extends TestCase
         $qrCode->refresh();
         $this->assertEquals('paused', $qrCode->status);
         // But content should be restored.
-        $this->assertEquals('Original content', $qrCode->content['body']);
+        $this->assertEquals('Original content', $qrCode->content['message']);
     }
 
     public function test_restore_revision_creates_new_revision_for_undo(): void

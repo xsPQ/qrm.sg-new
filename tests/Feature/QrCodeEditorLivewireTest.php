@@ -167,7 +167,7 @@ class QrCodeEditorLivewireTest extends TestCase
             ->assertSet('alias', 'campaign-2026');
     }
 
-    public function test_type_cannot_be_changed_on_edit(): void
+    public function test_type_can_be_changed_on_edit(): void
     {
         $owner = User::factory()->create();
         $qrCode = $this->makeQrCode($owner, ['type' => 'url']);
@@ -175,7 +175,7 @@ class QrCodeEditorLivewireTest extends TestCase
         Livewire::actingAs($owner)
             ->test(QrCodeEditor::class, ['qrCode' => $qrCode])
             ->set('type', 'message')
-            ->assertSet('type', 'url');
+            ->assertSet('type', 'message');
     }
 
     // ---------------------------------------------------------------
@@ -443,7 +443,7 @@ class QrCodeEditorLivewireTest extends TestCase
     // BUG-FIX-03: ECC read-only in editor
     // ---------------------------------------------------------------
 
-    public function test_ecc_dropdown_locked_hint_visible_in_editor(): void
+    public function test_ecc_dropdown_changeable_with_warning_in_editor(): void
     {
         $owner = User::factory()->create();
         $qrCode = $this->makeQrCode($owner);
@@ -451,16 +451,16 @@ class QrCodeEditorLivewireTest extends TestCase
         Livewire::actingAs($owner)
             ->test(QrCodeEditor::class, ['qrCode' => $qrCode])
             ->set('showStylePanel', true)
-            ->assertSee(__('Error correction is fixed once the QR code is created and cannot be changed afterwards.'));
+            ->assertSee(__('Changing error correction produces a new QR code image. The old code still works, but in the Free plan this counts as a new QR code against your limit.'));
     }
 
-    public function test_ecc_dropdown_locked_hint_not_visible_in_creator(): void
+    public function test_ecc_dropdown_changeable_hint_not_visible_in_creator(): void
     {
         $user = User::factory()->create();
 
         Livewire::actingAs($user)
             ->test(QrCreator::class)
             ->set('showStylePanel', true)
-            ->assertDontSee(__('Error correction is fixed once the QR code is created and cannot be changed afterwards.'));
+            ->assertDontSee(__('Changing error correction produces a new QR code image. The old code still works, but in the Free plan this counts as a new QR code against your limit.'));
     }
 }

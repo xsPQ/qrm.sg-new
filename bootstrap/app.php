@@ -15,8 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
 
-        // Trust all proxies (Docker nginx / reverse proxy / TLS termination)
-        $middleware->trustProxies(at: '*');
+        // No proxy trust needed inside the single-container nginx -> php-fpm setup.
+        // Trusting all proxies here can trigger Symfony IP parsing with a null client IP
+        // when the front controller is invoked without a populated REMOTE_ADDR.
 
         // Auto-verify email in dev/staging when APP_SKIP_EMAIL_VERIFICATION=true
         $middleware->append(\App\Http\Middleware\SkipEmailVerification::class);

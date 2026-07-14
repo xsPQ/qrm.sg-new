@@ -1,19 +1,57 @@
+# =========================================================================
+# .dockerignore — Files excluded from the Docker build context
+# =========================================================================
+# This keeps production images lean and ensures secrets never enter the image.
+# =========================================================================
+
+# Version control
 .git
 .github
+.gitignore
+
+# Environment files (secrets — never in the image)
 .env
 .env.backup
 .env.production
+.env.docker
+.env.docker-backup
+.env.docker.example
+.env.example
+
+# Dev marker (only relevant for bind-mount dev mode)
+.dev-mark
+
+# Dependencies (installed in the build stages)
 vendor
 node_modules
-database/*.sqlite
-npm-debug.log
-composer.lock
+
+# Build artifacts (rebuilt in the frontend stage)
+public/build
+
+# Docker artifacts
 docker/pgdata
-.idea
-.vscode
-*.md
-docs
-tests
+Dockerfile.allinone
+
+# Test / CI artifacts
+database/*.sqlite
 phpunit.xml
+phpunit.cache
 phpstan.neon
 .pint
+
+# Editor / IDE
+.idea
+.vscode
+.cursor
+.zed
+.codex
+.phpactor.json
+
+# Documentation (not needed at runtime)
+*.md
+docs
+
+# Logs / temp
+*.log
+npm-debug.log
+.scribe

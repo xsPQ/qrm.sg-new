@@ -1,0 +1,5 @@
+# This file marks the container as running in DEV mode.
+# The entrypoint checks for its presence to switch between dev and prod behaviour
+# (caching strategy, dependency installation, debug settings).
+# It is bind-mounted into the container via docker-compose.override.yml
+# and intentionally NOT present in production builds.

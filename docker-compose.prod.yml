@@ -1,0 +1,46 @@
+# =========================================================================
+# docker-compose.prod.yml — PROD overlay
+# =========================================================================
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# - No bind-mounts: code is baked into the image
+# - Port 8080 -> 80 (overridable via APP_PORT env)
+# - Production env vars from the environment / .env.docker
+# - Redis for cache/session/queue (not file-based)
+# - Opcache with validate_timestamps=0 (set in php.ini)
+# =========================================================================
+
+services:
+  app:
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      # Only persistent storage — no code bind-mount
+      - qr-storage:/var/www/qrm.sg/storage/app/private
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=${APP_URL:-http://localhost}
+      - APP_KEY=${APP_KEY}
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE:-qrm_sg}
+      - DB_USERNAME=${DB_USERNAME:-qrm}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=127.0.0.1
+      - REDIS_PASSWORD=null
+      - CACHE_STORE=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+      - MAIL_MAILER=${MAIL_MAILER:-log}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - STRIPE_KEY=${STRIPE_KEY:-}
+      - STRIPE_SECRET=${STRIPE_SECRET:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - STRIPE_PRICE_PRO=${STRIPE_PRICE_PRO:-}
+      - STRIPE_PRICE_BUSINESS=${STRIPE_PRICE_BUSINESS:-}
+
+volumes:
+  qr-storage:
+    driver: local

@@ -1,0 +1,45 @@
+# =========================================================================
+# docker-compose.override.yml — DEV overlay (auto-merged by `docker compose up`)
+# =========================================================================
+# - Bind-mounts the project directory so code changes are live
+# - Exposes port 8801 -> 80
+# - Passes all env vars from the host
+# - Disables opcache validation so PHP picks up file changes immediately
+# =========================================================================
+
+services:
+  app:
+    ports:
+      - "${APP_PORT:-8801}:80"
+    volumes:
+      # Live code from host — overrides the baked-in code
+      - ./:/var/www/qrm.sg
+      # Persistent storage (user uploads, logos) — not overwritten
+      - qr-storage:/var/www/qrm.sg/storage/app/private
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - APP_URL=${APP_URL:-http://localhost:8801}
+      - APP_KEY=${APP_KEY}
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE:-qrm_sg}
+      - DB_USERNAME=${DB_USERNAME:-qrm}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=127.0.0.1
+      - REDIS_PASSWORD=null
+      - CACHE_STORE=${CACHE_STORE:-file}
+      - SESSION_DRIVER=${SESSION_DRIVER:-file}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-database}
+      - MAIL_MAILER=${MAIL_MAILER:-log}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - STRIPE_KEY=${STRIPE_KEY:-}
+      - STRIPE_SECRET=${STRIPE_SECRET:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - STRIPE_PRICE_PRO=${STRIPE_PRICE_PRO:-}
+      - STRIPE_PRICE_BUSINESS=${STRIPE_PRICE_BUSINESS:-}
+
+volumes:
+  qr-storage:
+    driver: local
